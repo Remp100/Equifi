@@ -1,0 +1,23 @@
+Missing retry signing in after rejection on Sign up by admin (wait for...)
+Missing Dark Mode on Account Settigns. (wait until the Account Settings page is created)
+Missing list bottom for Portfolios (to have a option to go to second page if the tabel reaches the botton of the page, this helping avoiding the movement of the menus in the left and the slider on the right)(wait for...)
+Missing Account Settings page (wait for...)
+If the email had caps on on the name, it should be saved as caps off on the database. (wait for...)
+Better saved assets on Watchlist page (the saved should have the start, end date and the interval saved, not only the asset)(wait for...)
+Missing "restart from where you start" button on the Interval page.
+The colors of Mattermost for the pages (wait for the Dark mode #121317 for the sidebar and #25262a for hover)
+Placeholder design for Forgot Password page. (wait for...)
+Inconsistent profile picture in dropdown menu.
+Placeholder text for summary card on Invest page.
+Misplaced Rejection form for Dashboard admin
+If pressed twice, the Reject form does not close on Dashboard admin.
+Missing history of rejection for the user as admin on Dashboard.
+Site crash after rejection on Dashboard admin if the api tries to send a rejection mail.
+Misplaced Interval input on the invest Page.
+Missing closing profile picture in Invest, Watchlist and Portfolios.
+Bolder borders for every input. [TO DO]
+Misplaced width for multiple inputs on Invest
+Placeholder page for Profile page.
+Can't save the same asset on Watchlist page. (wait for the rework of Saved Assets).
+The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)(wait for the reword of the Saved Assets)
+Missing warning for asset deleted on Watchlist page.
