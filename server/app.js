@@ -254,7 +254,7 @@ function sendRejectionEmail(email, rejectionReason) {
     service: "gmail",
     auth: {
       user: "equifisupp@gmail.com",
-      pass: "zvrk wgna cdnn mgdg",
+      pass: "wsbu fwzm ftpb bqtx",
     },
   });
 
@@ -737,7 +737,7 @@ app.post("/forgot-password", async (req, res) => {
       service: "gmail",
       auth: {
         user: "equifisupp@gmail.com",
-        pass: "zvrk wgna cdnn mgdg",
+        pass: "wsbu fwzm ftpb bqtx",
       },
     });
 

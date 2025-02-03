@@ -1520,6 +1520,11 @@ export default function DashboardInvest() {
     let handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setOpen(false);
+        console.log(
+          "Clicked outside:",
+          e.target,
+          menuRef.current.contains(e.target)
+        );
       }
     };
     document.addEventListener("mousedown", handler);
@@ -2266,7 +2271,7 @@ export default function DashboardInvest() {
       </div>
       <div className="main-content">
         <div className="profile-dropdown-invest">
-          <div className="nav-menu">
+          <div className="nav-menu" ref={menuRef}>
             <div className="menu-trigger">
               <button className="avatar-button" onClick={() => setOpen(!open)}>
                 <div className="avatar-wrapper">

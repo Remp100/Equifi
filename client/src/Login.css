@@ -227,3 +227,11 @@
   gap: 3px;
   align-items: center;
 }
+
+.page-title-forgot-password {
+  text-align: center;
+}
+
+.page-title-reset-password {
+  text-align: center;
+}

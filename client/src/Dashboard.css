@@ -285,7 +285,7 @@ body {
 .search-bar input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -298,9 +298,9 @@ body {
 }
 
 .search-bar-watchlist input {
-  width: 190px;
+  width: 188px;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   box-sizing: border-box;
   padding-right: 30px;
@@ -428,7 +428,7 @@ body {
 }
 
 .search-results li {
-  border: 1px solid #d3d3d3;
+  border: 1px solid #8d8d8d;
   border-radius: 5px;
   display: flex;
   justify-content: space-between;
@@ -1434,7 +1434,7 @@ tbody tr:hover {
 .react-datepicker__input-container input {
   width: 100%;
   padding: 10px 40px 10px 10px; /* Adjusted padding to accommodate icon */
-  border: 1px solid #ddd;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 14px;
@@ -1496,7 +1496,7 @@ tbody tr:hover {
 .interval-select {
   width: 90%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 14px;
@@ -1507,7 +1507,7 @@ tbody tr:hover {
 .interval-select-watchlist {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #8d8d8d;
   border-radius: 4px;
   box-sizing: border-box;
   font-size: 14px;

@@ -532,6 +532,11 @@ export default function DashboardWatchlist() {
     let handler = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         setOpen(false);
+        console.log(
+          "Clicked outside:",
+          e.target,
+          menuRef.current.contains(e.target)
+        );
       }
     };
     document.addEventListener("mousedown", handler);
@@ -645,7 +650,7 @@ export default function DashboardWatchlist() {
         <div className="alert-invest">{renderStatusMessage()}</div>
         <div className="alert-invest">{renderSuccessAlert()}</div>
         <div className="profile-dropdown-watchlist">
-          <div className="nav-menu">
+          <div className="nav-menu" ref={menuRef}>
             <div className="menu-trigger">
               <button className="avatar-button" onClick={() => setOpen(!open)}>
                 <div className="avatar-wrapper">

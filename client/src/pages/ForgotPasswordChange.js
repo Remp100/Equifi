@@ -1,33 +1,66 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faExclamation,
+  faCheckCircle,
+} from "@fortawesome/free-solid-svg-icons";
 import "../Login.css";
 
 export default function ResetPassword() {
   const { resetToken } = useParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [statusClass, setStatusClass] = useState("message");
+  const [isAlertVisible, setIsAlertVisible] = useState(false);
+  const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState("");
 
   const navigate = useNavigate();
 
-  // Effect to handle status messages
   useEffect(() => {
-    if (statusMessage !== "") {
-      setStatusClass("showMessage");
-      setTimeout(() => {
-        setStatusClass("message");
-      }, 4000);
+    if (isAlertVisible) {
+      const timer = setTimeout(() => {
+        setAlertFadeOut(true);
+        setTimeout(() => {
+          setIsAlertVisible(false);
+          setAlertFadeOut(false);
+        }, 500);
+      }, 5000);
+      return () => clearTimeout(timer);
     }
-  }, [statusMessage]);
+  }, [isAlertVisible]);
+
+  const handleCloseWithFade = () => {
+    setAlertFadeOut(true);
+    setTimeout(() => {
+      setIsAlertVisible(false);
+      setAlertFadeOut(false);
+    }, 500);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (!password || !confirmPassword) {
+      setAlertMessage("Please enter a password in both fields!");
+      setAlertType("error");
+      setIsAlertVisible(true);
+      return;
+    }
+
     if (password !== confirmPassword) {
-      setStatusMessage("Passwords do not match!");
-      setStatusClass("errorMessage");
+      setAlertMessage("Passwords do not match!");
+      setAlertType("error");
+      setIsAlertVisible(true);
+      return;
+    }
+
+    if (password.length < 4) {
+      setAlertMessage("Password must be at least 4 characters long!");
+      setAlertType("error");
+      setIsAlertVisible(true);
       return;
     }
 
@@ -36,32 +69,58 @@ export default function ResetPassword() {
         "http://localhost:3002/change-password",
         {
           password,
-          token: resetToken, // Send the token with the request
+          token: resetToken,
         }
       );
 
       if (response.data.success) {
-        setStatusMessage("Password changed successfully!");
-        setStatusClass("successMessage");
-        setTimeout(() => navigate("/login"), 2000);
+        setAlertMessage("Password changed successfully!");
+        setAlertType("success");
+        setIsAlertVisible(true);
+
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       } else {
-        setStatusMessage(response.data.message || "An error occurred.");
-        setStatusClass("errorMessage");
+        setAlertMessage(response.data.message || "An error occurred.");
+        setAlertType("error");
+        setIsAlertVisible(true);
       }
     } catch (error) {
       console.error("Error resetting password:", error);
-      setStatusMessage("An error occurred. Please try again.");
-      setStatusClass("errorMessage");
+      setAlertMessage(
+        error.response?.data?.message || "An error occurred. Please try again."
+      );
+      setAlertType("error");
+      setIsAlertVisible(true);
     }
   };
 
   return (
-    <div className="reset-password-page">
-      <div className="reset-password">
+    <div className="login-page reset-password-page">
+      <div className="login reset-password">
         <div className="page-title">EquiFi</div>
+        <div className="status-holder">
+          {isAlertVisible && (
+            <div
+              className={`alert ${alertFadeOut ? "fade-out" : ""} ${
+                alertType === "error" ? "alert error" : "alert success"
+              }`}
+            >
+              <FontAwesomeIcon
+                icon={alertType === "error" ? faExclamation : faCheckCircle}
+                className="mr-2"
+              />
+              {alertMessage}
+              <button className="alert close-btn" onClick={handleCloseWithFade}>
+                X
+              </button>
+            </div>
+          )}
+        </div>
         <div className="wrapper">
           <form id="form" onSubmit={handleSubmit}>
-            <h1>Reset Password</h1>
+            <h2 className="page-title-reset-password">Reset Password</h2>
             <div className="mb-3 input-box">
               <input
                 type="password"
@@ -89,7 +148,14 @@ export default function ResetPassword() {
                 Change Password
               </button>
             </div>
-            <div className={statusClass}>{statusMessage}</div>
+            <div className="register-text mb-3">
+              <p>
+                Remember your password?
+                <Link to="/login" className="link-register">
+                  Back to Login
+                </Link>
+              </p>
+            </div>
           </form>
         </div>
       </div>

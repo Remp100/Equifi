@@ -117,7 +117,7 @@ export default function Login() {
     if (loginStatus !== "") {
       const timer = setTimeout(() => {
         handleCloseWithFade();
-      }, 500000); // Automatically fade out after 5 seconds
+      }, 5000); // Automatically fade out after 5 seconds
       return () => clearTimeout(timer); // Cleanup on unmount
     }
   }, [loginStatus]);
