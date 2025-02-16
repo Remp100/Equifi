@@ -42,7 +42,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 app.use(
   cors({
-    origin: [FRONTEND_URL, "http://localhost:3000"],
+    origin: ["https://equifi-ndhy.onrender.com", "http://localhost:3000"],
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
