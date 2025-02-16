@@ -42,7 +42,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 app.use(
   cors({
-    origin: [FRONTEND_URL], // ✅ Allow the deployed frontend
+    origin: [FRONTEND_URL],
     methods: ["POST", "GET", "PUT"],
     credentials: true,
   })

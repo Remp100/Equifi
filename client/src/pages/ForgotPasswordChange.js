@@ -79,13 +79,10 @@ export default function ResetPassword() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/change-password",
-        {
-          password,
-          token: resetToken,
-        }
-      );
+      const response = await axios.post(`${API_URL}//change-password`, {
+        password,
+        token: resetToken,
+      });
 
       if (response.data.success) {
         setAlertMessage("Password changed successfully!");
