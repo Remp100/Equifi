@@ -19,7 +19,7 @@
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.7",
     "cheerio": "^1.0.0",
-    "cloudinary": "^2.5.1",
+    "cloudinary": "^1.41.3",
     "concurrently": "^9.1.2",
     "cors": "^2.8.5",
     "d3": "^7.9.0",
