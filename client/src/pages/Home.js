@@ -25,7 +25,7 @@ export default function Homepage() {
       }
     };
     checkLoginStatus();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, API_URL]);
 
   useEffect(() => {
     console.log(isLoggedIn);

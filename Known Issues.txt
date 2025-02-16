@@ -7,5 +7,5 @@ Missing history of rejection for the user as admin on Dashboard.
 Placeholder page for Profile page.
 Can't save the same asset on Watchlist page.
 The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)
-Missing site on git hub.
 Missing functinality for 3rd and 4th search to update the chart and Monte Carlo Chart.
+Multiple issues on online site.
