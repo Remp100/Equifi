@@ -944,3 +944,7 @@ app.post("/change-password", async (req, res) => {
       .json({ success: false, message: "Invalid or expired token." });
   }
 });
+
+app.get("/", (req, res) => {
+  res.send("Backend is running!");
+});
