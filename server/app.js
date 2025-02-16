@@ -42,22 +42,24 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 app.use(
   cors({
-    origin: [FRONTEND_URL],
+    origin: FRONTEND_URL,
     methods: ["POST", "GET", "PUT"],
     credentials: true,
   })
 );
 
+app.set("trust proxy", 1);
 app.use(
   session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: true, // Ensures cookies are only sent over HTTPS
       httpOnly: true,
       sameSite: "None",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      domain: "equifi-ndhy.onrender.com", // 7 days
     },
   })
 );
