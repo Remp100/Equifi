@@ -29,6 +29,8 @@ const CACHE_KEY = "dashboardInvestCache";
 const apiKey = process.env.REACT_APP_API_KEY;
 
 export default function DashboardInvest() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const getCachedData = () => {
     const cachedData = sessionStorage.getItem(CACHE_KEY);
@@ -145,7 +147,7 @@ export default function DashboardInvest() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, email, firstName, lastName } = response.data;
@@ -159,7 +161,7 @@ export default function DashboardInvest() {
     };
 
     checkLoginStatus();
-  }, []);
+  }, [API_URL]);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -1356,7 +1358,7 @@ export default function DashboardInvest() {
         .trim();
     }
     try {
-      await axios.post("http://localhost:3002/save-data-portfolio", {
+      await axios.post(`${API_URL}/save-data-portfolio`, {
         email: email,
         savedData: data,
       });
@@ -1592,7 +1594,7 @@ export default function DashboardInvest() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");

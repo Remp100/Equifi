@@ -4,6 +4,8 @@ import { useNavigate, Link } from "react-router-dom";
 import "../Home-page.css";
 
 export default function Homepage() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
@@ -12,7 +14,7 @@ export default function Homepage() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid } = response.data;

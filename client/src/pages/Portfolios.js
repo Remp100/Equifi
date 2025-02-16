@@ -19,6 +19,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardPortfolios() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [email, setEmail] = useState("");
@@ -47,7 +49,7 @@ export default function DashboardPortfolios() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, email, firstName, lastName } = response.data;
@@ -61,7 +63,7 @@ export default function DashboardPortfolios() {
     };
 
     checkLoginStatus();
-  }, []);
+  }, [API_URL]);
 
   // Effect to redirect to login page if not logged in
   useEffect(() => {
@@ -75,12 +77,9 @@ export default function DashboardPortfolios() {
     if (email.length > 0) {
       const fetchPortfolioData = async () => {
         try {
-          const response = await axios.post(
-            "http://localhost:3002/get-portfolio-data",
-            {
-              email: email,
-            }
-          );
+          const response = await axios.post(`${API_URL}/get-portfolio-data`, {
+            email: email,
+          });
           if (response.status === 200) {
             const portfolios = response.data.portfolioData;
             const updatedPortfolios = await Promise.all(
@@ -518,7 +517,7 @@ export default function DashboardPortfolios() {
   // Function to handle delete button click
   const handleDeleteButton = async (index) => {
     try {
-      await axios.post("http://localhost:3002/delete-portfolio", {
+      await axios.post(`${API_URL}/delete-portfolio`, {
         email: email,
         portfolioIndex: index,
       });
@@ -537,7 +536,7 @@ export default function DashboardPortfolios() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");

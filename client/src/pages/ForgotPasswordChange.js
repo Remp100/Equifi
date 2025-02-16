@@ -9,6 +9,8 @@ import {
 import "../Login.css";
 
 export default function ResetPassword() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const { resetToken } = useParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,17 +23,15 @@ export default function ResetPassword() {
 
   // Validate the reset token on mount
   useEffect(() => {
-    axios
-      .get(`http://localhost:3002/verify-reset/${resetToken}`)
-      .catch((error) => {
-        console.error(
-          "Reset token verification error:",
-          error.response?.data || error
-        );
-        // Redirect to invalid page if token is invalid or expired
-        navigate("/404");
-      });
-  }, [resetToken, navigate]);
+    axios.get(`${API_URL}/verify-reset/${resetToken}`).catch((error) => {
+      console.error(
+        "Reset token verification error:",
+        error.response?.data || error
+      );
+      // Redirect to invalid page if token is invalid or expired
+      navigate("/404");
+    });
+  }, [resetToken, navigate, API_URL]);
 
   useEffect(() => {
     if (isAlertVisible) {

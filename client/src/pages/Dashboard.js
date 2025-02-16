@@ -15,6 +15,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function Dashboard() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,7 +36,7 @@ export default function Dashboard() {
     const checkLoginStatus = async () => {
       console.log("Checking login status...");
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, firstName, lastName, admin } = response.data;
@@ -55,12 +57,9 @@ export default function Dashboard() {
     // Function to fetch admin requests if user is an admin
     const fetchAdminRequests = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:3002/admin/verify-requests",
-          {
-            withCredentials: true,
-          }
-        );
+        const response = await axios.get(`${API_URL}/admin/verify-requests`, {
+          withCredentials: true,
+        });
         setAdminRequests(response.data || []);
       } catch (error) {
         console.error("Error fetching admin requests:", error);
@@ -68,7 +67,7 @@ export default function Dashboard() {
     };
 
     checkLoginStatus();
-  }, []);
+  }, [API_URL]);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -82,7 +81,7 @@ export default function Dashboard() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       setIsLoggedIn(false);
@@ -96,7 +95,7 @@ export default function Dashboard() {
   const updateAdminStatus = async (email, status) => {
     try {
       await axios.post(
-        "http://localhost:3002/admin/update-verify-status",
+        `${API_URL}/admin/update-verify-status`,
         {
           email,
           status,
@@ -153,7 +152,7 @@ export default function Dashboard() {
     try {
       // Send rejection reason and status update
       await axios.post(
-        "http://localhost:3002/admin/reject-application",
+        `${API_URL}/admin/reject-application`,
         {
           email: selectedRequest.email,
           rejectionReason,

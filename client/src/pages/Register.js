@@ -7,6 +7,8 @@ import "../Register.css";
 import "../Login.css";
 
 export default function Register() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -189,7 +191,7 @@ export default function Register() {
     formData.append("CIPhoto", CIPhoto);
 
     axios
-      .post("http://localhost:3002/register", formData, {
+      .post(`${API_URL}//register`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
       .then((response) => {

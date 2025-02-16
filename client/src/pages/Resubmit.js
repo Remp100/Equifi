@@ -7,6 +7,8 @@ import "../Register.css";
 import "../Login.css";
 
 export default function ResubmitData() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const [step, setStep] = useState(1);
   const [userData, setUserData] = useState({
     email: "",
@@ -83,7 +85,7 @@ export default function ResubmitData() {
     const email = localStorage.getItem("userEmail"); // adjust as needed
     if (email) {
       axios
-        .post("http://localhost:3002/get-profile-data", { email })
+        .post(`${API_URL}//get-profile-data`, { email })
         .then((response) => {
           const data = response.data;
           setUserData({
@@ -104,7 +106,7 @@ export default function ResubmitData() {
         })
         .catch((err) => console.error("Error fetching profile data", err));
     }
-  }, []);
+  }, [API_URL]);
 
   // Handle file input changes
   const handleFileChange = (e) => {
@@ -222,7 +224,7 @@ export default function ResubmitData() {
     formData.append("CIPhoto", userData.CIPhoto);
 
     axios
-      .post("http://localhost:3002/resubmit", formData, {
+      .post(`${API_URL}/resubmit`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
       .then((response) => {

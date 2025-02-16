@@ -23,6 +23,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardWatchlist() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [email, setEmail] = useState("");
@@ -63,7 +65,7 @@ export default function DashboardWatchlist() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, email, firstName, lastName } = response.data;
@@ -77,7 +79,7 @@ export default function DashboardWatchlist() {
     };
 
     checkLoginStatus();
-  }, []);
+  }, [API_URL]);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -89,7 +91,7 @@ export default function DashboardWatchlist() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");
@@ -319,7 +321,7 @@ export default function DashboardWatchlist() {
     };
 
     axios
-      .post("http://localhost:3002/save-asset", {
+      .post(`${API_URL}/save-asset`, {
         email: email,
         ...newAsset,
       })
@@ -352,7 +354,7 @@ export default function DashboardWatchlist() {
 
   const fetchSavedAssets = useCallback(() => {
     axios
-      .get(`http://localhost:3002/saved-assets/${email}`)
+      .get(`${API_URL}/saved-assets/${email}`)
       .then((response) => {
         console.log("Saved assets response:", response.data);
         if (response.status === 200 && response.data.savedAssets.length > 0) {
@@ -369,7 +371,7 @@ export default function DashboardWatchlist() {
         setWarning("");
         setIsAlertVisible(false);
       });
-  }, [email, setSavedAssets, setWarning, setIsAlertVisible]);
+  }, [email, setSavedAssets, setWarning, setIsAlertVisible, API_URL]);
 
   useEffect(() => {
     fetchSavedAssets();
@@ -518,7 +520,7 @@ export default function DashboardWatchlist() {
   // Function to delete saved asset from watchlist
   const handleDeleteAsset = (assetSymbol) => {
     axios
-      .post("http://localhost:3002/delete-saved-asset", {
+      .post(`${API_URL}/delete-saved-asset`, {
         email: email,
         assetSymbol: assetSymbol,
       })

@@ -6,6 +6,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faExclamation } from "@fortawesome/free-solid-svg-icons";
 
 export default function Login() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginStatus, setLoginStatus] = useState("");
@@ -15,7 +17,7 @@ export default function Login() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await fetch("http://localhost:3002/", {
+        const response = await fetch(`${API_URL}/`, {
           method: "GET",
           credentials: "include",
         });
@@ -26,7 +28,7 @@ export default function Login() {
       }
     };
     checkLoginStatus();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, API_URL]);
 
   useEffect(() => {
     if (isLoggedIn === true) {
@@ -37,7 +39,7 @@ export default function Login() {
   const loginUser = (event) => {
     event.preventDefault();
     axios
-      .post("http://localhost:3002/login", {
+      .post(`${API_URL}/login`, {
         LoginEmail: loginEmail,
         LoginPassword: loginPassword,
       })

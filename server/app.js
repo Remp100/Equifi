@@ -38,20 +38,25 @@ if (
 
 // Middleware setup
 app.use(express.json());
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
 app.use(
   cors({
-    origin: ["http://localhost:3000"], // Adjust for production
+    origin: [FRONTEND_URL], // ✅ Allow the deployed frontend
     methods: ["POST", "GET", "PUT"],
     credentials: true,
   })
 );
+
 app.use(
   session({
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Set to true if using HTTPS
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "None",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     },
   })

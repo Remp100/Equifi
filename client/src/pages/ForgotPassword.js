@@ -9,6 +9,8 @@ import {
 import "../Login.css";
 
 export default function ForgotPassword() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [isAlertVisible, setIsAlertVisible] = useState(false);
@@ -47,10 +49,9 @@ export default function ForgotPassword() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/forgot-password",
-        { email }
-      );
+      const response = await axios.post(`${API_URL}/forgot-password`, {
+        email,
+      });
 
       // Change this condition
       if (response.data.message) {

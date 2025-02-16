@@ -14,6 +14,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardProfile() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [modal, setModal] = useState(false);
@@ -43,7 +45,7 @@ export default function DashboardProfile() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, email } = response.data;
@@ -56,7 +58,7 @@ export default function DashboardProfile() {
     };
 
     checkLoginStatus();
-  }, []);
+  }, [API_URL]);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -95,13 +97,10 @@ export default function DashboardProfile() {
     };
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/save-data-profile",
-        {
-          email: email,
-          userData: userData,
-        }
-      );
+      const response = await axios.post(`${API_URL}/save-data-profile`, {
+        email: email,
+        userData: userData,
+      });
 
       if (response.status === 200) {
         setProfileData(userData);
@@ -119,12 +118,9 @@ export default function DashboardProfile() {
   // Function to fetch profile data for the given email
   const fetchProfileData = async (email) => {
     try {
-      const response = await axios.post(
-        "http://localhost:3002/get-profile-data",
-        {
-          email: email,
-        }
-      );
+      const response = await axios.post(`${API_URL}/get-profile-data`, {
+        email: email,
+      });
       if (response.status === 200) {
         setProfileData(response.data);
         setInputValues(response.data);
@@ -140,7 +136,7 @@ export default function DashboardProfile() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");
@@ -174,13 +170,10 @@ export default function DashboardProfile() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/change-password",
-        {
-          email: email,
-          newPassword: newPassword,
-        }
-      );
+      const response = await axios.post(`${API_URL}/change-password`, {
+        email: email,
+        newPassword: newPassword,
+      });
 
       if (response.status === 200) {
         setSuccessMessage("Password changed successfully");
