@@ -42,7 +42,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 app.use(
   cors({
-    origin: ["https://equifi-ndhy.onrender.com", "http://localhost:3000"],
+    origin: ["https://equifi-server.onrender.com", "http://localhost:3000"],
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
@@ -59,7 +59,7 @@ app.use(
       httpOnly: true,
       sameSite: "None",
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      domain: "equifi-ndhy.onrender.com", // 7 days
+      domain: "equifi-server.onrender.com", // 7 days
     },
   })
 );
@@ -107,9 +107,8 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 // Start the server
-const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(3002, () => {
+  console.log("Server is running on port 3002");
 });
 
 // Connect to MongoDB
@@ -943,8 +942,4 @@ app.post("/change-password", async (req, res) => {
       .status(500)
       .json({ success: false, message: "Invalid or expired token." });
   }
-});
-
-app.get("/", (req, res) => {
-  res.send("Backend is running!");
 });
