@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faExclamation, faCheck } from "@fortawesome/free-solid-svg-icons";
 import "../Register.css";
 import "../Login.css";
 
@@ -48,14 +48,22 @@ export default function Register() {
 
   const renderErrorMessage = () => {
     if (!alert) return null;
-
     const { type, message } = alert;
-
-    const alertClass = type === "error" ? "alert error" : "alert warning";
-
+    let alertClass = "";
+    if (type === "error") {
+      alertClass = "alert error";
+    } else if (type === "success") {
+      alertClass = "alert success";
+    } else {
+      alertClass = "alert warning";
+    }
     return (
       <div className={alertClass}>
-        <FontAwesomeIcon icon={faExclamation} className="mr-2" />
+        {/* Use a check icon for success and exclamation for others */}
+        <FontAwesomeIcon
+          icon={type === "success" ? faCheck : faExclamation}
+          className="mr-2"
+        />
         {message}
         <button className="alert close-btn" onClick={handleCloseWithFade}>
           X
@@ -89,21 +97,15 @@ export default function Register() {
       if (!firstName || !/^[\p{L}\s'-]+$/u.test(firstName)) {
         setAlert({
           type: "warning",
-          message:
-            "First Name can only contain letters, spaces, and certain special characters.",
+          message: "Invalid First name.",
         });
         return;
       }
       if (!lastName || !/^[\p{L}\s'-]+$/u.test(lastName)) {
         setAlert({
           type: "warning",
-          message:
-            "Last Name can only contain letters, spaces, and certain special characters.",
+          message: "Invalid Last name.",
         });
-        return;
-      }
-      if (!pronoun) {
-        setAlert({ type: "warning", message: "Please select a pronoun." });
         return;
       }
       if (phoneNumber.trim() === "" || !/^\d+$/.test(phoneNumber)) {
@@ -111,6 +113,10 @@ export default function Register() {
           type: "warning",
           message: "Phone Number can only contain numbers.",
         });
+        return;
+      }
+      if (!pronoun) {
+        setAlert({ type: "warning", message: "Please select a pronoun." });
         return;
       }
     }
@@ -126,24 +132,21 @@ export default function Register() {
     if (!country || !/^[\p{L}\s'-]+$/u.test(country)) {
       setAlert({
         type: "warning",
-        message:
-          "Country can only contain letters, spaces, and certain special characters.",
+        message: "Invalid Country.",
       });
       return;
     }
     if (!city || !/^[\p{L}\s'-]+$/u.test(city)) {
       setAlert({
         type: "warning",
-        message:
-          "City can only contain letters and certain special characters.",
+        message: "Invalid City.",
       });
       return;
     }
     if (!state || !/^[\p{L}\s'-]+$/u.test(state)) {
       setAlert({
         type: "warning",
-        message:
-          "State/Province can only contain letters and certain special characters.",
+        message: "Invalid State.",
       });
       return;
     }
@@ -187,13 +190,14 @@ export default function Register() {
 
     axios
       .post("http://localhost:3002/register", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       })
       .then((response) => {
         if (response.data.message === "User added!") {
-          navigateTo("/login");
+          // Show success alert with check icon
+          setAlert({ type: "success", message: "Registration successful!" });
+          // Redirect to Log in page after 3 seconds
+          setTimeout(() => navigateTo("/login"), 4000);
         } else {
           setAlert({ type: "error", message: "Email is already registered." });
         }
@@ -201,12 +205,12 @@ export default function Register() {
       .catch(() => {
         setAlert({
           type: "error",
-          message: "Error during registration. Please try again.",
+          message: "Registration failed. Please try again.",
         });
       });
   };
 
-  const truncateFileName = (name, maxLength = 15) => {
+  const truncateFileName = (name, maxLength = 14) => {
     if (name.length <= maxLength) return name;
 
     const fileExtension = name.slice(name.lastIndexOf("."));

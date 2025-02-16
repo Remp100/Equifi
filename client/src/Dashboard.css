@@ -272,7 +272,7 @@ body {
   justify-content: space-between; /* Ensure space between left and right sections */
   gap: 20px;
   width: 100%;
-  padding-top: 90px;
+  padding-top: 80px;
   padding-left: 60px;
 }
 
@@ -613,8 +613,32 @@ body {
 }
 
 .summary-details {
-  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  padding: 30px 0;
   max-width: 800px;
+  margin: 0 auto;
+  column-gap: 100px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.detail-label {
+  color: #64748b;
+  font-size: 16px;
+  font-weight: 500;
+  min-width: 85px;
+}
+
+.detail-value {
+  color: #1e293b;
+  font-size: 15px;
 }
 
 .return-chart {
@@ -1213,16 +1237,6 @@ tbody tr:hover {
   height: 30%;
 }
 
-.btn {
-  flex: 1;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
 .btn-accept {
   background-color: #059669;
   color: white;
@@ -1242,11 +1256,17 @@ tbody tr:hover {
 }
 
 .rejection-form {
-  margin-top: 1.5rem;
+  position: fixed; /* Keep it above other elements */
+  top: 60%; /* Adjust vertically if needed */
+  left: 58%; /* Move it more to the right */
+  transform: translate(-50%, -50%); /* Center the form based on new left */
+  background: white;
   padding: 1.5rem;
-  background: #f8fafc;
   border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Ensure it's above other elements */
+  width: 400px;
+  max-width: 90%;
 }
 
 .rejection-form h3 {
@@ -1255,7 +1275,7 @@ tbody tr:hover {
 }
 
 .rejection-form textarea {
-  width: 100%;
+  width: 90%;
   padding: 0.75rem;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -1269,9 +1289,24 @@ tbody tr:hover {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.rejection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  z-index: 999; /* Just below the rejection form */
+}
+
+.blur-background {
+  filter: blur(3px);
+  pointer-events: none; /* Disable interactions with the blurred elements */
+}
+
 .rejection-actions {
   display: flex;
-  gap: 1rem;
+  gap: 14rem;
 }
 
 .btn-submit {
@@ -1304,13 +1339,34 @@ tbody tr:hover {
 }
 
 .message-success {
+  position: absolute;
+  top: 10px; /* Adjust as needed */
+  left: 50%;
+  transform: translateX(-50%);
   background-color: #dcfce7;
   color: #166534;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  z-index: 900; /* Below the rejection form */
 }
 
 .message-error {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.rejection-message {
+  position: absolute;
+  top: 32%;
+  left: 58%;
+  transform: translate(-50%, -50%);
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  z-index: 1100; /* Above the rejection form */
 }
 
 .save-asset-wrapper {
@@ -1456,8 +1512,9 @@ tbody tr:hover {
 }
 
 .select-wrapper {
+  padding-top: 151px;
+  padding-left: 200px;
   position: relative;
-  width: 89%;
   max-width: 400px;
   margin-bottom: 0;
 }
@@ -1648,8 +1705,8 @@ tbody tr:hover {
 
 .toggle-section {
   position: absolute;
-  top: 180px; /* Adjust top position as needed */
-  right: 450px; /* Adjust right position as needed */
+  top: 270px; /* Adjust top position as needed */
+  right: 50px; /* Adjust right position as needed */
   display: flex;
   align-items: center;
   z-index: 2; /* Ensure toggle is above the canvas */

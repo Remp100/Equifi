@@ -1,23 +1,11 @@
-Missing retry signing in after rejection on Sign up by admin (wait for...)
 Missing Dark Mode on Account Settigns. (wait until the Account Settings page is created)
 Missing list bottom for Portfolios (to have a option to go to second page if the tabel reaches the botton of the page, this helping avoiding the movement of the menus in the left and the slider on the right)(wait for...)
-Missing Account Settings page (wait for...)
-If the email had caps on on the name, it should be saved as caps off on the database. (wait for...)
-Better saved assets on Watchlist page (the saved should have the start, end date and the interval saved, not only the asset)(wait for...)
-Missing "restart from where you start" button on the Interval page.
+Missing Account Settings page (wait for the rework of the Profile page)(wait for...)
 The colors of Mattermost for the pages (wait for the Dark mode #121317 for the sidebar and #25262a for hover)
 Inconsistent profile picture in dropdown menu.
-Placeholder text for summary card on Invest page.
-Misplaced Rejection form for Dashboard admin
-If pressed twice, the Reject form does not close on Dashboard admin.
 Missing history of rejection for the user as admin on Dashboard.
-Site crash after rejection on Dashboard admin if the api tries to send a rejection mail.
-Misplaced Interval input on the invest Page.
-Misplaced width for multiple inputs on Invest
 Placeholder page for Profile page.
-Can't save the same asset on Watchlist page. (wait for the rework of Saved Assets).
-The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)(wait for the reword of the Saved Assets)
-Missing warning for asset deleted on Watchlist page.
-Misplaced switch on Watchlist page. (should be on the chart)
-Missing functioanlity for the expiration tocken for the verify your email address.
-Functionality to go back and change the password again after changing it.
+Can't save the same asset on Watchlist page.
+The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)
+Missing site on git hub.
+Missing functinality for 3rd and 4th search to update the chart and Monte Carlo Chart.

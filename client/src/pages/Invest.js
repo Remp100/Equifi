@@ -25,15 +25,33 @@ import {
   faCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
+const CACHE_KEY = "dashboardInvestCache";
+const apiKey = process.env.REACT_APP_API_KEY;
+
 export default function DashboardInvest() {
   // State variables
+  const getCachedData = () => {
+    const cachedData = sessionStorage.getItem(CACHE_KEY);
+    return cachedData ? JSON.parse(cachedData) : null;
+  };
+
+  const cachedData = getCachedData();
+
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [email, setEmail] = useState("");
   const navigate = useNavigate();
-  const [assetSymbolA, setAssetSymbolA] = useState("");
-  const [assetSymbolB, setAssetSymbolB] = useState("");
-  const [assetSymbolC, setAssetSymbolC] = useState("");
-  const [assetSymbolD, setAssetSymbolD] = useState("");
+  const [assetSymbolA, setAssetSymbolA] = useState(
+    cachedData?.assetSymbolA || ""
+  );
+  const [assetSymbolB, setAssetSymbolB] = useState(
+    cachedData?.assetSymbolB || ""
+  );
+  const [assetSymbolC, setAssetSymbolC] = useState(
+    cachedData?.assetSymbolC || ""
+  );
+  const [assetSymbolD, setAssetSymbolD] = useState(
+    cachedData?.assetSymbolD || ""
+  );
   const [searchStateA, setSearchStateA] = useState({
     companyName: "",
     hasSearched: false,
@@ -54,24 +72,42 @@ export default function DashboardInvest() {
     hasSearched: false,
     suggestions: [],
   });
-  const [searchResultA, setSearchResultA] = useState(null);
-  const [searchResultB, setSearchResultB] = useState(null);
-  const [searchResultC, setSearchResultC] = useState(null);
+  const [searchResultA, setSearchResultA] = useState(
+    cachedData?.searchResultA || null
+  );
+  const [searchResultB, setSearchResultB] = useState(
+    cachedData?.searchResultB || null
+  );
+  const [searchResultC, setSearchResultC] = useState(
+    cachedData?.searchResultC || null
+  );
+  const [searchResultD, setSearchResultD] = useState(
+    cachedData?.searchResultD || null
+  );
+
   const searchBarRefA = useRef(null);
   const searchBarRefB = useRef(null);
   const searchBarRefC = useRef(null);
   const searchBarRefD = useRef(null);
-  const [searchResultD, setSearchResultD] = useState(null);
-  const [showInputA, setShowInputA] = useState(true);
-  const [showInputB, setShowInputB] = useState(true);
-  const [showInputC, setShowInputC] = useState(false);
-  const [showInputD, setShowInputD] = useState(false);
+  const [showInputA, setShowInputA] = useState(!cachedData?.searchResultA);
+  const [showInputB, setShowInputB] = useState(!cachedData?.searchResultB);
+  const [showInputC, setShowInputC] = useState(
+    searchResultC ? false : cachedData?.showInputC || false
+  );
+  const [showInputD, setShowInputD] = useState(
+    searchResultD ? false : cachedData?.showInputD || false
+  );
+
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
-  const [interval, setIntervals] = useState("Interval");
+  const [startDate, setStartDate] = useState(
+    cachedData?.startDate ? new Date(cachedData.startDate) : null
+  );
+  const [endDate, setEndDate] = useState(
+    cachedData?.endDate ? new Date(cachedData.endDate) : null
+  );
+  const [interval, setIntervals] = useState(cachedData?.interval || "Interval");
   const [lineChartData, setLineChartData] = useState({});
   const [filteredDataA, setFilteredDataA] = useState([]);
   const [filteredDataB, setFilteredDataB] = useState([]);
@@ -89,7 +125,7 @@ export default function DashboardInvest() {
   const [riskFreeRate, setRiskFreeRate] = useState(null);
   const [clickedInfos, setClickedInfos] = useState([]);
   const [dataFetched, setDataFetched] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(cachedData?.step || 0);
   const [assetDataAvailability, setAssetDataAvailability] = useState({
     A: true,
     B: true,
@@ -104,8 +140,6 @@ export default function DashboardInvest() {
   const [isAlertVisible, setIsAlertVisible] = useState(true);
   const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
-
-  const apiKey = process.env.REACT_APP_API_KEY;
 
   // Effect to check login status when component mounts
   useEffect(() => {
@@ -784,6 +818,7 @@ export default function DashboardInvest() {
       D: true,
     });
     setShouldRecalculate(false);
+    sessionStorage.removeItem(CACHE_KEY);
   };
 
   // Function to handle delete button click for an asset
@@ -1078,15 +1113,37 @@ export default function DashboardInvest() {
   useEffect(() => {
     if (!dataFetched) return;
 
-    if (riskFreeRate !== null) {
-      setMonteCarloPortfolios(generateRandomPortfolios());
-      setEfficientFrontierData(findEfficientFrontier());
+    const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
+    const cachedEfficientFrontierData = sessionStorage.getItem(
+      "efficientFrontierData"
+    );
+
+    if (cachedMonteCarloData && cachedEfficientFrontierData) {
+      // Use cached data if available
+      console.log("🟢 Using cached Monte Carlo and Efficient Frontier data.");
+      setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
+      setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
+    } else if (riskFreeRate !== null) {
+      console.log(
+        "🔄 No cache found. Generating new Monte Carlo & Efficient Frontier data..."
+      );
+      // Generate new data and store it
+      const mcPortfolios = generateRandomPortfolios();
+      const efData = findEfficientFrontier();
+      setMonteCarloPortfolios(mcPortfolios);
+      setEfficientFrontierData(efData);
+
+      sessionStorage.setItem(
+        "monteCarloPortfolios",
+        JSON.stringify(mcPortfolios)
+      );
+      sessionStorage.setItem("efficientFrontierData", JSON.stringify(efData));
     }
   }, [
     riskFreeRate,
+    dataFetched,
     generateRandomPortfolios,
     findEfficientFrontier,
-    dataFetched,
   ]);
 
   // Function to calculate the best outcome return at a given percentile
@@ -1098,146 +1155,159 @@ export default function DashboardInvest() {
 
   // Effect to update Monte Carlo chart with new data
   useEffect(() => {
-    const isEfficientFrontierArray = Array.isArray(
-      efficientFrontierData.portfolios
+    // 🟡 Check if we have valid Monte Carlo data
+    const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
+    const cachedEfficientFrontierData = sessionStorage.getItem(
+      "efficientFrontierData"
     );
 
-    if (
-      chartContainerRef.current &&
-      isEfficientFrontierArray &&
-      dataFetched &&
-      step === 5
-    ) {
-      const formattedEfficientFrontierData =
-        efficientFrontierData.portfolios.map((portfolio) => ({
-          x: portfolio.volatility,
-          y: portfolio.return,
-          metrics: portfolio,
-        }));
-
-      const formattedRandomPortfolios = monteCarloPortfolios.map(
-        (portfolio) => ({
-          x: portfolio.volatility + (Math.random() - 0.5) * 0.1,
-          y: portfolio.return + (Math.random() - 0.5) * 0.1,
-          metrics: portfolio,
-        })
+    if (!dataFetched && cachedMonteCarloData && cachedEfficientFrontierData) {
+      console.log(
+        "🔄 Restoring Monte Carlo and Efficient Frontier Data from Cache..."
       );
+      setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
+      setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
+      setDataFetched(true); // ✅ Ensure we mark data as fetched
+    }
 
-      const ctx = chartContainerRef.current.getContext("2d");
+    if (
+      !dataFetched ||
+      !Array.isArray(efficientFrontierData.portfolios) ||
+      !monteCarloPortfolios.length ||
+      step !== 5
+    ) {
+      console.log("⚠️ Monte Carlo Chart Data Not Ready Yet, Waiting...");
+      return;
+    }
+
+    console.log("🟢 Rendering Monte Carlo Chart...");
+
+    // ✅ Format data for Efficient Frontier
+    const formattedEfficientFrontierData = efficientFrontierData.portfolios.map(
+      (portfolio) => ({
+        x: portfolio.volatility,
+        y: portfolio.return,
+        metrics: portfolio,
+      })
+    );
+
+    // ✅ Format data for Monte Carlo Portfolios with slight randomness
+    const formattedRandomPortfolios = monteCarloPortfolios.map((portfolio) => ({
+      x: portfolio.volatility + (Math.random() - 0.5) * 0.1,
+      y: portfolio.return + (Math.random() - 0.5) * 0.1,
+      metrics: portfolio,
+    }));
+
+    // ✅ Ensure chart container exists
+    if (!chartContainerRef.current) return;
+    const ctx = chartContainerRef.current.getContext("2d");
+
+    // ✅ Destroy previous chart before re-rendering
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    // ✅ Create new Monte Carlo Chart
+    chartInstanceRef.current = new Chart(ctx, {
+      type: "scatter",
+      data: {
+        datasets: [
+          {
+            label: "Efficient Frontier",
+            data: formattedEfficientFrontierData,
+            backgroundColor: "transparent",
+            borderColor: "red",
+            borderWidth: 2,
+            pointRadius: 0,
+            showLine: true,
+            fill: false,
+          },
+          {
+            label: "Random Portfolios",
+            data: formattedRandomPortfolios,
+            backgroundColor: "rgba(128, 128, 128, 0.5)",
+            pointRadius: 3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            mode: "point",
+            intersect: false,
+            callbacks: {
+              label: function (context) {
+                const metrics = context.raw.metrics;
+                return `Return: ${metrics.return.toFixed(
+                  2
+                )}%, Volatility: ${metrics.volatility.toFixed(2)}%`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Volatility (Standard Deviation)" },
+            beginAtZero: false,
+          },
+          y: {
+            title: { display: true, text: "Expected Return" },
+            beginAtZero: false,
+          },
+        },
+        onClick: async (event, elements) => {
+          if (elements.length > 0) {
+            const element = elements[0];
+            const datasetIndex = element.datasetIndex;
+            const dataIndex = element.index;
+            const clickedData =
+              chartInstanceRef.current.data.datasets[datasetIndex].data[
+                dataIndex
+              ];
+
+            if (clickedData && clickedData.metrics) {
+              const clickedPortfolio = clickedData.metrics;
+              const meanReturns =
+                JSON.parse(sessionStorage.getItem("meanReturns")) || [];
+              const bestOutcomeReturn = calculateBestOutcome(0.99, meanReturns);
+
+              const portfolioComponents = clickedPortfolio.weights
+                ? clickedPortfolio.weights
+                    .map((weight, index) => {
+                      const symbol = [
+                        assetSymbolA,
+                        assetSymbolB,
+                        assetSymbolC,
+                        assetSymbolD,
+                      ][index];
+                      return symbol
+                        ? `Asset ${symbol}: ${(weight * 100).toFixed(2)}%`
+                        : null;
+                    })
+                    .filter(Boolean)
+                : [];
+
+              const cardInfo = {
+                return: clickedPortfolio.return.toFixed(2),
+                volatility: clickedPortfolio.volatility.toFixed(2),
+                bestOutcomeReturn: bestOutcomeReturn.toFixed(2),
+                portfolioComponents,
+              };
+
+              setClickedInfos((prevInfos) => [...prevInfos, cardInfo]);
+            }
+          }
+        },
+      },
+    });
+
+    // ✅ Cleanup: Destroy the chart on unmount
+    return () => {
       if (chartInstanceRef.current) {
         chartInstanceRef.current.destroy();
       }
-
-      chartInstanceRef.current = new Chart(ctx, {
-        type: "scatter",
-        data: {
-          datasets: [
-            {
-              label: "Efficient Frontier",
-              data: formattedEfficientFrontierData,
-              backgroundColor: "transparent",
-              borderColor: "red",
-              borderWidth: 2,
-              pointRadius: 0,
-              showLine: true,
-              fill: false,
-            },
-            {
-              label: "Random Portfolios",
-              data: formattedRandomPortfolios,
-              backgroundColor: "rgba(128, 128, 128, 0.5)",
-              pointRadius: 3,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            tooltip: {
-              mode: "point",
-              intersect: false,
-              callbacks: {
-                label: function (context) {
-                  const metrics = context.raw.metrics;
-                  return `Return: ${metrics.return.toFixed(
-                    2
-                  )}%, Volatility: ${metrics.volatility.toFixed(2)}%`;
-                },
-              },
-            },
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: "Volatility (Standard Deviation)",
-              },
-              beginAtZero: false,
-            },
-            y: {
-              title: {
-                display: true,
-                text: "Expected Return",
-              },
-              beginAtZero: false,
-            },
-          },
-          onClick: async (event, elements) => {
-            if (elements.length > 0) {
-              const element = elements[0];
-              const datasetIndex = element.datasetIndex;
-              const dataIndex = element.index;
-              const clickedData =
-                chartInstanceRef.current.data.datasets[datasetIndex].data[
-                  dataIndex
-                ];
-
-              if (clickedData && clickedData.metrics) {
-                const clickedPortfolio = clickedData.metrics;
-
-                const meanReturns =
-                  JSON.parse(sessionStorage.getItem("meanReturns")) || [];
-                const bestOutcomeReturn = calculateBestOutcome(
-                  0.99,
-                  meanReturns
-                );
-
-                const portfolioComponents = clickedPortfolio.weights
-                  ? clickedPortfolio.weights
-                      .map((weight, index) => {
-                        const symbol = [
-                          assetSymbolA,
-                          assetSymbolB,
-                          assetSymbolC,
-                          assetSymbolD,
-                        ][index];
-                        return symbol
-                          ? `Asset ${symbol}: ${(weight * 100).toFixed(2)}%`
-                          : null;
-                      })
-                      .filter(Boolean)
-                  : [];
-
-                const cardInfo = {
-                  return: clickedPortfolio.return.toFixed(2),
-                  volatility: clickedPortfolio.volatility.toFixed(2),
-                  bestOutcomeReturn: bestOutcomeReturn.toFixed(2),
-                  portfolioComponents,
-                };
-
-                setClickedInfos((prevInfos) => [...prevInfos, cardInfo]);
-              }
-            }
-          },
-        },
-      });
-
-      return () => {
-        if (chartInstanceRef.current) {
-          chartInstanceRef.current.destroy();
-        }
-      };
-    }
+    };
   }, [
     monteCarloPortfolios,
     efficientFrontierData,
@@ -1298,36 +1368,49 @@ export default function DashboardInvest() {
 
   // Function to update line chart data
   const updateLineChartData = useCallback(() => {
+    console.log("🔄 Running updateLineChartData...");
+
+    // Retrieve cached data from sessionStorage if available
+    const cachedLineChartData = sessionStorage.getItem("lineChartData");
+
+    // Ensure symbols are valid and have data
     const validSymbols = [
-      assetSymbolA,
-      assetSymbolB,
-      assetSymbolC,
-      assetSymbolD,
-    ].filter(Boolean);
+      { symbol: assetSymbolA, data: filteredDataA },
+      { symbol: assetSymbolB, data: filteredDataB },
+      { symbol: assetSymbolC, data: filteredDataC },
+      { symbol: assetSymbolD, data: filteredDataD },
+    ].filter(({ symbol, data }) => symbol && data && data.length > 0);
 
-    const reversedHistoricalDates = historicalDates.slice().reverse();
-    const reversedFilteredDataA = filteredDataA.slice().reverse();
-    const reversedFilteredDataB = filteredDataB.slice().reverse();
-    const reversedFilteredDataC = filteredDataC.slice().reverse();
-    const reversedFilteredDataD = filteredDataD.slice().reverse();
+    if (validSymbols.length === 0 || historicalDates.length === 0) {
+      console.warn("⚠️ No valid data available for chart update.");
 
-    setLineChartData({
+      // Restore from cache if available
+      if (cachedLineChartData) {
+        console.log("♻️ Restoring Line Chart from Cache...");
+        setLineChartData(JSON.parse(cachedLineChartData));
+      }
+      return;
+    }
+
+    // Reverse historical dates for correct chronological order
+    const reversedHistoricalDates = [...historicalDates].reverse();
+
+    // Create new chart data
+    const newChartData = {
       labels: reversedHistoricalDates,
-      datasets: [
-        ...validSymbols.map((symbol, index) => ({
-          label: symbol,
-          data: [
-            reversedFilteredDataA,
-            reversedFilteredDataB,
-            reversedFilteredDataC,
-            reversedFilteredDataD,
-          ][index],
-          fill: false,
-          borderColor: ["green", "blue", "pink", "purple"][index],
-          tension: 0.1,
-        })),
-      ],
-    });
+      datasets: validSymbols.map(({ symbol, data }, index) => ({
+        label: symbol,
+        data: [...data].reverse(),
+        fill: false,
+        borderColor: ["green", "blue", "pink", "purple"][index],
+        tension: 0.1,
+      })),
+    };
+
+    // Save to cache and update state
+    console.log("✅ Updating Line Chart Data:", newChartData);
+    setLineChartData(newChartData);
+    sessionStorage.setItem("lineChartData", JSON.stringify(newChartData));
   }, [
     assetSymbolA,
     assetSymbolB,
@@ -1343,6 +1426,7 @@ export default function DashboardInvest() {
   useEffect(() => {
     if (dataFetched) {
       updateLineChartData();
+      sessionStorage.setItem("lineChartData", JSON.stringify(lineChartData));
     }
   }, [
     dataFetched,
@@ -1356,6 +1440,13 @@ export default function DashboardInvest() {
     filteredDataD,
     updateLineChartData,
   ]);
+
+  useEffect(() => {
+    if (Object.keys(lineChartData).length > 0) {
+      console.log("💾 Saving line chart data to session storage...");
+      sessionStorage.setItem("lineChartData", JSON.stringify(lineChartData));
+    }
+  }, [lineChartData]);
 
   // Function to handle next step sequence
   const handleNextStep = () => {
@@ -1642,6 +1733,183 @@ export default function DashboardInvest() {
       }, 500); // Matches the fade-out animation duration (500ms)
     }
   };
+
+  const fetchCompanyName = async (symbol, setSearchResult, setShowInput) => {
+    if (!symbol) return;
+
+    console.log(`🟡 fetchCompanyName triggered for ${symbol}`);
+
+    // 🔥 Check if name is already stored to prevent API call
+    const storedResult = [
+      searchResultA,
+      searchResultB,
+      searchResultC,
+      searchResultD,
+    ]
+      .flat()
+      .find((result) => result?.symbol === symbol);
+
+    if (storedResult) {
+      console.log(
+        `✅ Found cached name: ${storedResult.name} for ${symbol}, skipping API call.`
+      );
+      setSearchResult([{ name: storedResult.name, symbol }]);
+      setShowInput(false);
+      console.log(storedResult);
+      return;
+    }
+
+    // Only fetch if name is missing
+    console.log(`❌ No cache found for ${symbol}, making API call...`);
+    try {
+      const response = await fetch(
+        `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${apiKey}`
+      );
+
+      console.log(response);
+      const data = await response.json();
+
+      if (data.length > 0) {
+        setSearchResult([{ name: data[0].companyName, symbol }]);
+        setShowInput(false);
+      }
+    } catch (error) {
+      console.error("Error fetching company name:", error);
+    }
+  };
+
+  useEffect(() => {
+    console.log("🔄 Running useEffect to restore search results...");
+
+    if (assetSymbolA && !searchResultA) {
+      console.log(`🔎 Attempting to restore Asset A: ${assetSymbolA}`);
+      fetchCompanyName(assetSymbolA, setSearchResultA, setShowInputA);
+    }
+    if (assetSymbolB && !searchResultB) {
+      console.log(`🔎 Attempting to restore Asset B: ${assetSymbolB}`);
+      fetchCompanyName(assetSymbolB, setSearchResultB, setShowInputB);
+    }
+    if (assetSymbolC && !searchResultC) {
+      console.log(`🔎 Attempting to restore Asset C: ${assetSymbolC}`);
+      fetchCompanyName(assetSymbolC, setSearchResultC, setShowInputC);
+    }
+    if (assetSymbolD && !searchResultD) {
+      console.log(`🔎 Attempting to restore Asset D: ${assetSymbolD}`);
+      fetchCompanyName(assetSymbolD, setSearchResultD, setShowInputD);
+    }
+  }, [assetSymbolA, assetSymbolB, assetSymbolC, assetSymbolD]);
+
+  // 🔹 **Save Only Search Results to Cache**
+  useEffect(() => {
+    sessionStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        assetSymbolA,
+        assetSymbolB,
+        assetSymbolC,
+        assetSymbolD,
+        searchResultA,
+        searchResultB,
+        searchResultC,
+        searchResultD,
+        showInputC,
+        showInputD,
+        startDate: startDate ? startDate.toISOString() : null, // Save as string
+        endDate: endDate ? endDate.toISOString() : null, // Save as string
+        interval,
+        step,
+      })
+    );
+  }, [
+    assetSymbolA,
+    assetSymbolB,
+    assetSymbolC,
+    assetSymbolD,
+    searchResultA,
+    searchResultB,
+    searchResultC,
+    searchResultD,
+    showInputC,
+    showInputD,
+    startDate,
+    endDate,
+    interval,
+    step,
+  ]);
+
+  useEffect(() => {
+    console.log("♻️ Restoring saved state from session storage...");
+
+    // Restore cached asset symbols, dates, and interval
+    const cachedData = sessionStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+
+      setAssetSymbolA(parsedData.assetSymbolA || "");
+      setAssetSymbolB(parsedData.assetSymbolB || "");
+      setAssetSymbolC(parsedData.assetSymbolC || "");
+      setAssetSymbolD(parsedData.assetSymbolD || "");
+
+      setSearchResultA(parsedData.searchResultA || null);
+      setSearchResultB(parsedData.searchResultB || null);
+      setSearchResultC(parsedData.searchResultC || null);
+      setSearchResultD(parsedData.searchResultD || null);
+
+      setShowInputC(parsedData.showInputC || false);
+      setShowInputD(parsedData.showInputD || false);
+
+      setStartDate(
+        parsedData.startDate ? new Date(parsedData.startDate) : null
+      );
+      setEndDate(parsedData.endDate ? new Date(parsedData.endDate) : null);
+      setIntervals(parsedData.interval || "Interval");
+    }
+
+    // Restore historical dates and filtered data
+    const cachedHistoricalDates = sessionStorage.getItem("historicalDates");
+    if (cachedHistoricalDates) {
+      setHistoricalDates(JSON.parse(cachedHistoricalDates));
+    }
+
+    const cachedFilteredDataA = sessionStorage.getItem("filteredDataA");
+    if (cachedFilteredDataA) {
+      setFilteredDataA(JSON.parse(cachedFilteredDataA));
+    }
+    const cachedFilteredDataB = sessionStorage.getItem("filteredDataB");
+    if (cachedFilteredDataB) {
+      setFilteredDataB(JSON.parse(cachedFilteredDataB));
+    }
+    const cachedFilteredDataC = sessionStorage.getItem("filteredDataC");
+    if (cachedFilteredDataC) {
+      setFilteredDataC(JSON.parse(cachedFilteredDataC));
+    }
+    const cachedFilteredDataD = sessionStorage.getItem("filteredDataD");
+    if (cachedFilteredDataD) {
+      setFilteredDataD(JSON.parse(cachedFilteredDataD));
+    }
+
+    // Restore line chart data
+    const cachedLineChartData = sessionStorage.getItem("lineChartData");
+    if (cachedLineChartData) {
+      console.log("🟢 Restoring line chart data from session storage...");
+      setLineChartData(JSON.parse(cachedLineChartData));
+    }
+
+    // Restore Monte Carlo and Efficient Frontier data
+    const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
+    const cachedEfficientFrontierData = sessionStorage.getItem(
+      "efficientFrontierData"
+    );
+
+    if (cachedMonteCarloData) {
+      setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
+    }
+
+    if (cachedEfficientFrontierData) {
+      setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
+    }
+  }, []);
+
   // Render step content based on the current step
   const renderStepContent = () => {
     switch (step) {
@@ -2134,21 +2402,26 @@ export default function DashboardInvest() {
                 />
               </div>
               <div className="summary-details">
-                <p>
-                  <strong>Assets:</strong>{" "}
-                  {[assetSymbolA, assetSymbolB, assetSymbolC, assetSymbolD]
-                    .filter(Boolean)
-                    .join(", ")}
-                </p>
-                <p>
-                  <strong>Start Date:</strong> {formatDate(startDate)}
-                </p>
-                <p>
-                  <strong>End Date:</strong> {formatDate(endDate)}
-                </p>
-                <p>
-                  <strong>Interval:</strong> {interval}
-                </p>
+                <div className="detail-item">
+                  <span className="detail-label">Assets:</span>
+                  <span className="detail-value">
+                    {[assetSymbolA, assetSymbolB, assetSymbolC, assetSymbolD]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">End Date:</span>
+                  <span className="detail-value">{formatDate(endDate)}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Start Date:</span>
+                  <span className="detail-value">{formatDate(startDate)}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Interval:</span>
+                  <span className="detail-value">{interval}</span>
+                </div>
               </div>
               <div className="return-chart-container">
                 {Object.keys(lineChartData).length > 0 && (

@@ -169,9 +169,16 @@ export default function Dashboard() {
       await updateAdminStatus(selectedRequest.email, "Rejected");
 
       // Remove the rejected request from the list
-      setAdminRequests((prevRequests) =>
-        prevRequests.filter((req) => req.email !== selectedRequest.email)
-      );
+      setAdminRequests((prevRequests) => {
+        const newRequests = prevRequests.filter(
+          (req) => req.email !== selectedRequest.email
+        );
+        // Adjust currentIndex if it's out-of-bounds:
+        if (currentIndex >= newRequests.length) {
+          setCurrentIndex(newRequests.length - 1);
+        }
+        return newRequests;
+      });
 
       // Clear the form and UI state
       setSelectedRequest(null);
@@ -269,16 +276,8 @@ export default function Dashboard() {
           {isAdmin && adminRequests.length > 0 ? (
             <div className="admin-requests">
               <h3 className="admin-title">Admin Verification Requests</h3>
-              {message.text && (
-                <div
-                  className={`message ${
-                    message.type === "success"
-                      ? "message-success"
-                      : "message-error"
-                  }`}
-                >
-                  {message.text}
-                </div>
+              {message.text && message.type === "success" && (
+                <div className="message message-success">{message.text}</div>
               )}
 
               <div className="request-carousel">
@@ -391,6 +390,19 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {selectedRequest && (
+                <div
+                  className="rejection-overlay"
+                  onClick={() => setSelectedRequest(null)}
+                ></div>
+              )}
+
+              {selectedRequest && message.text && message.type === "error" && (
+                <div className="message message-error rejection-message">
+                  {message.text}
+                </div>
+              )}
 
               {selectedRequest && (
                 <div className="rejection-form">

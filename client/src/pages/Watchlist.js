@@ -311,19 +311,27 @@ export default function DashboardWatchlist() {
       return;
     }
 
+    const newAsset = {
+      assetSymbol: assetSymbol,
+      interval: interval,
+      startDate: startDate,
+      endDate: endDate,
+    };
+
     axios
       .post("http://localhost:3002/save-asset", {
         email: email,
-        assetSymbol: assetSymbol,
+        ...newAsset,
       })
       .then((response) => {
         if (response.status === 200) {
-          setSavedAssets((prevSavedAssets) => [
-            ...prevSavedAssets,
-            assetSymbol,
-          ]);
+          // Update local state with the complete asset object
+          setSavedAssets((prevSavedAssets) => [...prevSavedAssets, newAsset]);
           setIsSuccessAlertVisible(true);
           setAlertFadeOut(false);
+
+          // Refresh the saved assets from the server to ensure consistency
+          fetchSavedAssets();
         } else if (response.status === 400) {
           setWarning("Asset is already saved.");
           setIsAlertVisible(true);
@@ -342,25 +350,30 @@ export default function DashboardWatchlist() {
       });
   };
 
-  // Effect to fetch saved assets for the user
-  useEffect(() => {
+  const fetchSavedAssets = useCallback(() => {
     axios
       .get(`http://localhost:3002/saved-assets/${email}`)
       .then((response) => {
-        const assets = response.data.savedAssets;
-        setSavedAssets(assets);
-        if (assets.length === 0) {
-          setWarning("No assets were saved");
-          setIsAlertVisible(true);
-          setAlertFadeOut(false);
-        } else {
+        console.log("Saved assets response:", response.data);
+        if (response.status === 200 && response.data.savedAssets.length > 0) {
+          setSavedAssets(response.data.savedAssets);
           setWarning("");
+          setIsAlertVisible(false);
+        } else {
+          setSavedAssets([]);
         }
       })
       .catch((error) => {
         console.error("Error fetching saved assets:", error);
+        setSavedAssets([]);
+        setWarning("");
+        setIsAlertVisible(false);
       });
-  }, [email]);
+  }, [email, setSavedAssets, setWarning, setIsAlertVisible]);
+
+  useEffect(() => {
+    fetchSavedAssets();
+  }, [fetchSavedAssets]);
 
   // Function to handle input change for asset search
   const handleInputChange = (e) => {
@@ -455,8 +468,11 @@ export default function DashboardWatchlist() {
   };
 
   // Function to handle asset button click to update chart
-  const handleAssetButtonClick = (assetSymbol) => {
-    setAssetSymbol(assetSymbol);
+  const handleAssetButtonClick = (asset) => {
+    setAssetSymbol(asset.assetSymbol);
+    setStartDate(new Date(asset.startDate));
+    setEndDate(new Date(asset.endDate));
+    setInterval(asset.interval);
   };
 
   // Function to handle suggestion click from dropdown
@@ -509,7 +525,7 @@ export default function DashboardWatchlist() {
       .then((response) => {
         if (response.status === 200) {
           setSavedAssets((prevSavedAssets) =>
-            prevSavedAssets.filter((asset) => asset !== assetSymbol)
+            prevSavedAssets.filter((asset) => asset.assetSymbol !== assetSymbol)
           );
           setIsSuccessAlertVisible(true);
           setAlertFadeOut(false);
@@ -805,20 +821,44 @@ export default function DashboardWatchlist() {
               <h2>Saved Assets</h2>
               {savedAssets.length > 0 ? (
                 <ul>
-                  {savedAssets.map((assetSymbol) => (
-                    <li key={assetSymbol}>
-                      <button
-                        className="btn view-asset"
-                        onClick={() => handleAssetButtonClick(assetSymbol)}
-                      >
-                        {assetSymbol}
-                      </button>
-                      <button
-                        className="btn delete-asset"
-                        onClick={() => handleDeleteAsset(assetSymbol)}
-                      >
-                        X
-                      </button>
+                  {savedAssets.map((asset) => (
+                    <li key={asset.assetSymbol} className="saved-asset-item">
+                      <div className="asset-info">
+                        <strong>{asset.assetSymbol}</strong> - Interval:{" "}
+                        {asset.interval || "N/A"}
+                        <br />
+                        <span>
+                          Start:{" "}
+                          {asset.startDate
+                            ? new Date(asset.startDate).toLocaleDateString(
+                                "en-US"
+                              )
+                            : "N/A"}
+                        </span>{" "}
+                        |{" "}
+                        <span>
+                          End:{" "}
+                          {asset.endDate
+                            ? new Date(asset.endDate).toLocaleDateString(
+                                "en-US"
+                              )
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <div className="asset-buttons">
+                        <button
+                          className="btn view-asset"
+                          onClick={() => handleAssetButtonClick(asset)}
+                        >
+                          View
+                        </button>
+                        <button
+                          className="btn delete-asset"
+                          onClick={() => handleDeleteAsset(asset.assetSymbol)}
+                        >
+                          X
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>

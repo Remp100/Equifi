@@ -11,6 +11,7 @@ import Profile from "./pages/Profile";
 import Watchlist from "./pages/Watchlist";
 import NoPage from "./pages/NoPage";
 import VerifyEmail from "./components/VerifyEmail";
+import Resubmit from "./pages/Resubmit";
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/resubmit" element={<Resubmit />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route
             path="/forgotpasswordchange/:resetToken"

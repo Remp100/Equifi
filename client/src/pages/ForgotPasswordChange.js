@@ -19,6 +19,20 @@ export default function ResetPassword() {
 
   const navigate = useNavigate();
 
+  // Validate the reset token on mount
+  useEffect(() => {
+    axios
+      .get(`http://localhost:3002/verify-reset/${resetToken}`)
+      .catch((error) => {
+        console.error(
+          "Reset token verification error:",
+          error.response?.data || error
+        );
+        // Redirect to invalid page if token is invalid or expired
+        navigate("/404");
+      });
+  }, [resetToken, navigate]);
+
   useEffect(() => {
     if (isAlertVisible) {
       const timer = setTimeout(() => {
@@ -82,17 +96,33 @@ export default function ResetPassword() {
           navigate("/login");
         }, 2000);
       } else {
-        setAlertMessage(response.data.message || "An error occurred.");
-        setAlertType("error");
-        setIsAlertVisible(true);
+        // If the server response indicates the token is invalid, redirect
+        if (
+          response.data.message &&
+          response.data.message.toLowerCase().includes("expired")
+        ) {
+          navigate("/404");
+        } else {
+          setAlertMessage(response.data.message || "An error occurred.");
+          setAlertType("error");
+          setIsAlertVisible(true);
+        }
       }
     } catch (error) {
       console.error("Error resetting password:", error);
-      setAlertMessage(
-        error.response?.data?.message || "An error occurred. Please try again."
-      );
-      setAlertType("error");
-      setIsAlertVisible(true);
+      if (
+        error.response?.data?.message &&
+        error.response.data.message.toLowerCase().includes("expired")
+      ) {
+        navigate("/404");
+      } else {
+        setAlertMessage(
+          error.response?.data?.message ||
+            "An error occurred. Please try again."
+        );
+        setAlertType("error");
+        setIsAlertVisible(true);
+      }
     }
   };
 
@@ -150,7 +180,7 @@ export default function ResetPassword() {
             </div>
             <div className="register-text mb-3">
               <p>
-                Remember your password?
+                Remember your password?{" "}
                 <Link to="/login" className="link-register">
                   Back to Login
                 </Link>
