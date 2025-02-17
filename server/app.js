@@ -773,7 +773,18 @@ app.post("/delete-saved-asset", async (req, res) => {
 app.post("/save-data-profile", async (req, res) => {
   const {
     email,
-    userData: { firstName, lastName, country, pronoun },
+    userData: {
+      firstName,
+      lastName,
+      pronoun,
+      country,
+      city,
+      state,
+      zipCode,
+      street,
+      number,
+      phoneNumber,
+    },
   } = req.body;
 
   try {
@@ -790,15 +801,21 @@ app.post("/save-data-profile", async (req, res) => {
           $set: {
             firstName: firstName,
             lastName: lastName,
-            country: country,
             pronoun: pronoun,
+            country: country,
+            city: city,
+            state: state,
+            zipCode: zipCode,
+            street: street,
+            number: number,
+            phoneNumber: phoneNumber,
           },
         },
-        { upsert: true }
+        { upsert: true, returnDocument: "after" }
       );
 
-    console.log("Profile updated/created for", email);
-    res.sendStatus(200);
+    console.log("Profile updated/created for", email, result.value);
+    res.status(200).json({ success: true, updatedProfile: result.value });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -909,7 +926,7 @@ app.get("/verify-reset/:token", (req, res) => {
   }
 });
 
-app.post("/change-password", async (req, res) => {
+app.post("/reset-password", async (req, res) => {
   const { password, token } = req.body;
 
   try {
@@ -934,5 +951,47 @@ app.post("/change-password", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Invalid or expired token." });
+  }
+});
+
+app.post("/change-password", async (req, res) => {
+  const { email, currentPassword, newPassword } = req.body;
+
+  try {
+    // Fetch user from database
+    const user = await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .findOne({ email });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
+    }
+
+    // Check if current password is correct
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Incorrect current password." });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .updateOne({ email }, { $set: { password: hashedPassword } });
+
+    res
+      .status(200)
+      .json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ success: false, message: "Something went wrong." });
   }
 });

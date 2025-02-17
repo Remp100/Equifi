@@ -204,8 +204,16 @@ body {
   background-color: #28a745;
 }
 
+.btn.save:hover {
+  background-color: #218838;
+}
+
 .btn.cancel {
   background-color: #dc3545;
+}
+
+.btn.cancel:hover {
+  background-color: #c82333;
 }
 
 .btn.upload {
@@ -772,33 +780,23 @@ body {
 
 .pronoun-selection {
   display: flex;
-  justify-content: center;
   gap: 20px;
   align-items: center;
 }
 
 .pronoun-selection label {
+  margin-top: 17px;
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.profile-actions,
 .change-password-actions,
 .change-username-actions {
   width: 100%;
   display: flex;
   justify-content: center;
   gap: 10px;
-}
-
-.change-password {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  width: 100%;
-  margin-top: 30px;
 }
 
 .profile-picture-upload {
@@ -2253,4 +2251,158 @@ tbody tr:hover {
 
 .text-center {
   text-align: center;
+}
+
+.main-content.profile-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 40px;
+}
+
+.profile-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  text-align: center;
+  color: #1e325e;
+}
+
+.profile-container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 60%;
+  min-width: 500px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  width: 48%;
+}
+
+.profile-field label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+/* Input Fields */
+.profile-field input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 100%;
+  background-color: #f9f9f9;
+}
+
+.profile-field input:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+/* Profile Actions (Buttons) */
+.profile-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.btn-profile {
+  padding: 10px 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-profile.save {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-profile.save:hover {
+  background-color: #218838;
+}
+
+.btn-profile.cancel {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-profile.cancel:hover {
+  background-color: #c82333;
+}
+
+.btn-profile.edit {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-profile.edit:hover {
+  background-color: #0056b3;
+}
+
+.btn-profile.change-password {
+  background-color: #ffc107;
+  color: black;
+}
+
+.btn-profile.change-password:hover {
+  background-color: #e0a800;
+}
+
+.change-password-container {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: 60%;
+  min-width: 500px;
+}
+
+.change-password-container input {
+  display: block;
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.btn-profile.update-password {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-profile.update-password:hover {
+  background-color: #218838;
+}
+
+.profile-divider {
+  width: 106.5%;
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: none;
+  margin: 20px -30px;
+}
+
+.profile-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }

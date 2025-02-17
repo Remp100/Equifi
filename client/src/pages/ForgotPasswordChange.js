@@ -80,7 +80,7 @@ export default function ResetPassword() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3002/change-password",
+        "http://localhost:3002/reset-password",
         {
           password,
           token: resetToken,

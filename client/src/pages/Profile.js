@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import portrait from "../imgs/default-pp.jpg";
 import axios from "axios";
 import "../Dashboard.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -9,35 +8,45 @@ import {
   faChartLine,
   faEye,
   faFolder,
-  faUser,
-  faSignOutAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardProfile() {
-  // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
-  const [modal, setModal] = useState(false);
   const [email, setEmail] = useState("");
-  const navigate = useNavigate();
   const [profileData, setProfileData] = useState({
     firstName: "",
     lastName: "",
-    country: "",
     pronoun: "",
+    country: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    street: "",
+    number: "",
+    phoneNumber: "",
   });
   const [editMode, setEditMode] = useState(false);
   const [inputValues, setInputValues] = useState({
     firstName: "",
     lastName: "",
+    pronoun: "",
     country: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    street: "",
+    number: "",
+    phoneNumber: "",
   });
   const [selectedPronoun, setSelectedPronoun] = useState("");
   const [pronounInput, setPronoun] = useState("");
   const [changePasswordMode, setChangePasswordMode] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const navigate = useNavigate();
 
   // Check login status on component mount
   useEffect(() => {
@@ -47,9 +56,11 @@ export default function DashboardProfile() {
           withCredentials: true,
         });
         const { valid, email } = response.data;
-        setIsLoggedIn(valid);
-        setEmail(email || "");
-        fetchProfileData(email || "");
+        if (valid && email) {
+          setIsLoggedIn(valid);
+          setEmail(email);
+          fetchProfileData(email);
+        }
       } catch (error) {
         console.error("Error checking login status:", error);
       }
@@ -65,21 +76,40 @@ export default function DashboardProfile() {
     }
   }, [isLoggedIn, navigate]);
 
-  // Function to toggle the modal visibility
-  const toggleModal = () => {
-    setModal(!modal);
+  // Function to fetch profile data for the given email
+  const fetchProfileData = async (email) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:3002/get-profile-data",
+        { email }
+      );
+
+      if (response.status === 200) {
+        const data = response.data;
+        console.log("Fetched profile data:", data);
+        setProfileData(data);
+
+        // Ensure all fields have default empty string values
+        setInputValues({
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          pronoun: data.pronoun || "",
+          country: data.country || "",
+          city: data.city || "",
+          state: data.state || "",
+          zipCode: data.zipCode || "",
+          street: data.street || "",
+          number: data.number || "",
+          phoneNumber: data.phoneNumber || "",
+        });
+
+        setSelectedPronoun(data.pronoun || "");
+      }
+    } catch (error) {
+      console.error("Error fetching profile data:", error.message);
+    }
   };
 
-  // Effect to add or remove active-modal class to body based on modal states
-  useEffect(() => {
-    if (modal) {
-      document.body.classList.add("active-modal");
-    } else {
-      document.body.classList.remove("active-modal");
-    }
-  }, [modal]);
-
-  // Function to handle pronoun selection
   const handlePronounSelect = (pronoun) => {
     setPronoun(pronoun);
     setSelectedPronoun(pronoun);
@@ -92,7 +122,15 @@ export default function DashboardProfile() {
       lastName: inputValues.lastName || profileData.lastName,
       country: inputValues.country || profileData.country,
       pronoun: pronounInput || profileData.pronoun,
+      city: inputValues.city || profileData.city,
+      state: inputValues.state || profileData.state,
+      zipCode: inputValues.zipCode || profileData.zipCode,
+      street: inputValues.street || profileData.street,
+      number: inputValues.number || profileData.number,
+      phoneNumber: inputValues.phoneNumber || profileData.phoneNumber,
     };
+
+    console.log("Saving userData:", userData);
 
     try {
       const response = await axios.post(
@@ -104,6 +142,7 @@ export default function DashboardProfile() {
       );
 
       if (response.status === 200) {
+        console.log("Saved successfully:", response.data);
         setProfileData(userData);
         setEditMode(false);
         setPronoun(pronounInput || profileData.pronoun);
@@ -116,58 +155,26 @@ export default function DashboardProfile() {
     }
   };
 
-  // Function to fetch profile data for the given email
-  const fetchProfileData = async (email) => {
-    try {
-      const response = await axios.post(
-        "http://localhost:3002/get-profile-data",
-        {
-          email: email,
-        }
-      );
-      if (response.status === 200) {
-        setProfileData(response.data);
-        setInputValues(response.data);
-        setSelectedPronoun(response.data.pronoun);
-      } else {
-        console.error("Failed to fetch profile data");
-      }
-    } catch (error) {
-      console.error("Error fetching profile data:", error.message);
-    }
-  };
-
-  // Function to handle user logout
-  const handleLogout = async () => {
-    try {
-      await axios.get("http://localhost:3002/logout", {
-        withCredentials: true,
-      });
-      localStorage.removeItem("isLoggedIn");
-      setIsLoggedIn(false);
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
-  };
-
-  // Function to cancel editing mode
-  const handleCancel = () => {
-    setInputValues(profileData);
+  const resetModes = () => {
     setEditMode(false);
+    setChangePasswordMode(false);
+    setErrorMessage("");
   };
 
   // Function to handle password change
   const handlePasswordChange = async () => {
-    if (newPassword.trim() === "") {
-      setErrorMessage("Please enter a password");
+    if (!currentPassword.trim()) {
+      setErrorMessage("Please enter your current password");
       return;
     }
-
+    if (!newPassword.trim()) {
+      setErrorMessage("Please enter a new password");
+      return;
+    }
     if (newPassword.length < 4) {
-      setErrorMessage("Please input a password with at least 4 characters");
+      setErrorMessage("Password must be at least 4 characters");
       return;
     }
-
     if (newPassword !== confirmPassword) {
       setErrorMessage("Passwords do not match");
       return;
@@ -177,24 +184,27 @@ export default function DashboardProfile() {
       const response = await axios.post(
         "http://localhost:3002/change-password",
         {
-          email: email,
-          newPassword: newPassword,
+          email,
+          currentPassword,
+          newPassword,
         }
       );
 
       if (response.status === 200) {
         setSuccessMessage("Password changed successfully");
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
+        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setChangePasswordMode(false);
+        setTimeout(() => {
+          setSuccessMessage("");
+          setChangePasswordMode(false);
+        }, 2000);
       } else {
-        console.error("Failed to change password");
+        setErrorMessage("Failed to change password. Try again.");
       }
     } catch (error) {
       console.error("Error changing password:", error.message);
+      setErrorMessage("Error occurred. Try again.");
     }
   };
 
@@ -207,20 +217,15 @@ export default function DashboardProfile() {
     }
   }, [changePasswordMode]);
 
-  // Function for toggling change password mode
-  const toggleChangePasswordMode = () => {
-    setChangePasswordMode((prevMode) => !prevMode);
-  };
-
-  // Function to enter edit mode
-  const enterEditMode = () => {
-    setEditMode(true);
-    setChangePasswordMode(false);
-  };
-
   return (
     <div className="dashboard">
+      {/* Sidebar Section */}
       <div className="sidebar">
+        <div className="app-title-container">
+          <div className="app-title">
+            <h3>EquiFi</h3>
+          </div>
+        </div>
         <nav className="menu">
           <Link to="/dashboard" className="menu-item">
             <FontAwesomeIcon icon={faHome} className="menu-icon" /> Dashboard
@@ -235,199 +240,286 @@ export default function DashboardProfile() {
             <FontAwesomeIcon icon={faFolder} className="menu-icon" /> Portfolios
           </Link>
         </nav>
-        <div className="bottom-links">
-          <Link to="/dashboard/profile" className="menu-item active">
-            <FontAwesomeIcon icon={faUser} className="menu-icon" /> Profile
-          </Link>
-          <div className="menu-item" onClick={toggleModal}>
-            <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" /> Log
-            out
-          </div>
-        </div>
       </div>
-      <div className="main-content">
-        <div className="app-title-container">
-          <div className="app-title">
-            <h3>EquiFi</h3>
-          </div>
-        </div>
-        <div className="profile-form">
-          <div className="profile-header">
-            <img src={portrait} alt="Profile" className="profile-pic" />
-            <h3 className="email-profile">{email || "\u00A0"}</h3>
-          </div>
-          <div className="profile-info">
-            <label htmlFor="firstName">
-              First Name:{" "}
-              {editMode ? (
-                <input
-                  type="text"
-                  value={inputValues.firstName}
-                  onChange={(e) =>
-                    setInputValues({
-                      ...inputValues,
-                      firstName: e.target.value,
-                    })
-                  }
-                  placeholder={profileData.firstName}
-                />
-              ) : (
-                <span>{profileData.firstName}</span>
-              )}
-            </label>
-            <label htmlFor="lastName">
-              Last Name:{" "}
-              {editMode ? (
-                <input
-                  type="text"
-                  value={inputValues.lastName}
-                  onChange={(e) =>
-                    setInputValues({
-                      ...inputValues,
-                      lastName: e.target.value,
-                    })
-                  }
-                  placeholder={profileData.lastName}
-                />
-              ) : (
-                <span>{profileData.lastName}</span>
-              )}
-            </label>
-            <label htmlFor="country">
-              Country:{" "}
-              {editMode ? (
-                <input
-                  type="text"
-                  value={inputValues.country}
-                  onChange={(e) =>
-                    setInputValues({ ...inputValues, country: e.target.value })
-                  }
-                  placeholder={profileData.country}
-                />
-              ) : (
-                <span>{profileData.country}</span>
-              )}
-            </label>
-            <div className="pronoun-selection">
-              {editMode ? (
-                <>
-                  <label>
+      <div className="main-content profile-page">
+        <div className="profile-container">
+          <h2 className="profile-title">
+            {changePasswordMode ? "Change Password" : "Profile Information"}
+          </h2>
+          <hr className="profile-divider" />
+          <div className="profile-content">
+            {changePasswordMode ? (
+              <>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Current Password</label>
                     <input
-                      type="radio"
-                      name="pronoun"
-                      value="Mr."
-                      checked={selectedPronoun === "Mr."}
-                      onChange={() => handlePronounSelect("Mr.")}
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
                     />
-                    Mr.
-                  </label>
-                  <label>
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>New Password</label>
                     <input
-                      type="radio"
-                      name="pronoun"
-                      value="Mrs."
-                      checked={selectedPronoun === "Mrs."}
-                      onChange={() => handlePronounSelect("Mrs.")}
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
                     />
-                    Mrs.
-                  </label>
-                </>
-              ) : (
-                <span>Pronoun: {selectedPronoun}</span>
-              )}
-            </div>
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Confirm Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>First Name</label>
+                    <input
+                      type="text"
+                      value={inputValues.firstName ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          firstName: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label>Last Name</label>
+                    <input
+                      type="text"
+                      value={inputValues.lastName ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          lastName: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Email</label>
+                    <input
+                      type="email"
+                      value={profileData.email ?? ""}
+                      disabled
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label>Phone</label>
+                    <input
+                      type="text"
+                      value={inputValues.phoneNumber ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          phoneNumber: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Pronoun</label>
+                    <div className="pronoun-selection">
+                      {editMode ? (
+                        <>
+                          <label>
+                            <input
+                              type="radio"
+                              name="pronoun"
+                              value="Mr."
+                              checked={selectedPronoun === "Mr."}
+                              onChange={() => handlePronounSelect("Mr.")}
+                            />
+                            Mr.
+                          </label>
+                          <label>
+                            <input
+                              type="radio"
+                              name="pronoun"
+                              value="Mrs."
+                              checked={selectedPronoun === "Mrs."}
+                              onChange={() => handlePronounSelect("Mrs.")}
+                            />
+                            Mrs.
+                          </label>
+                        </>
+                      ) : (
+                        <input
+                          type="text"
+                          value={inputValues.pronoun}
+                          onChange={(e) =>
+                            setInputValues({
+                              ...inputValues,
+                              pronoun: e.target.value,
+                            })
+                          }
+                          disabled={!editMode}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <hr className="profile-divider" />
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Country</label>
+                    <input
+                      type="text"
+                      value={profileData.country ?? ""}
+                      disabled
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label>City</label>
+                    <input
+                      type="text"
+                      value={inputValues.city ?? ""}
+                      onChange={(e) =>
+                        setInputValues({ ...inputValues, city: e.target.value })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>State</label>
+                    <input
+                      type="text"
+                      value={inputValues.state ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          state: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label>ZIP Code</label>
+                    <input
+                      type="text"
+                      value={inputValues.zipCode ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          zipCode: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                </div>
+                <div className="profile-row">
+                  <div className="profile-field">
+                    <label>Street</label>
+                    <input
+                      type="text"
+                      value={inputValues.street ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          street: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                  <div className="profile-field">
+                    <label>Street Number</label>
+                    <input
+                      type="text"
+                      value={inputValues.number ?? ""}
+                      onChange={(e) =>
+                        setInputValues({
+                          ...inputValues,
+                          number: e.target.value,
+                        })
+                      }
+                      disabled={!editMode}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
+          <hr className="profile-divider" />
           <div className="profile-actions">
             {editMode ? (
               <>
-                <button className="btn save" onClick={handleSaveUser}>
+                <button className="btn-profile save" onClick={handleSaveUser}>
                   Save
                 </button>
-                <button className="btn cancel" onClick={handleCancel}>
+                <button className="btn-profile cancel" onClick={resetModes}>
                   Cancel
                 </button>
               </>
-            ) : (
-              <div className="edit-wrapper">
-                <button className="btn edit" onClick={enterEditMode}>
-                  Edit
+            ) : changePasswordMode ? (
+              <>
+                <button
+                  className="btn-profile update-password"
+                  onClick={handlePasswordChange}
+                >
+                  Update Password
                 </button>
-              </div>
+                <button className="btn-profile exit" onClick={resetModes}>
+                  Exit
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="btn-profile edit"
+                  onClick={() => {
+                    setEditMode(true);
+                    setChangePasswordMode(false);
+                  }}
+                >
+                  Edit Profile
+                </button>
+                <button
+                  className="btn-profile change-password"
+                  onClick={() => {
+                    setChangePasswordMode(true);
+                    setEditMode(false);
+                  }}
+                >
+                  Change Password
+                </button>
+              </>
             )}
           </div>
-          {!editMode && (
-            <>
-              {changePasswordMode ? (
-                <div className="change-password">
-                  <input
-                    type="password"
-                    placeholder="New Password"
-                    value={newPassword}
-                    onChange={(e) => {
-                      setNewPassword(e.target.value);
-                      setErrorMessage("");
-                    }}
-                  />
-                  <input
-                    type="password"
-                    placeholder="Confirm New Password"
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-                      setErrorMessage("");
-                    }}
-                  />
-                  <div className="change-password-actions">
-                    <button
-                      className="btn confirm"
-                      onClick={handlePasswordChange}
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      className="btn cancel"
-                      onClick={() => setChangePasswordMode(false)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  <span className="error-message">{errorMessage}</span>
-                </div>
-              ) : (
-                <div className="change-password-wrapper">
-                  <button
-                    className="btn change"
-                    onClick={toggleChangePasswordMode}
-                  >
-                    Change Password
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+
+          <div>
+            <span className="error-message">{errorMessage}</span>
+          </div>
           {successMessage && (
             <div className="success-message">{successMessage}</div>
           )}
         </div>
       </div>
-      {modal && (
-        <div className="modal-container">
-          <div className="modal">
-            <div onClick={toggleModal} className="overlay"></div>
-            <div className="modal-content">
-              <h2>Are you sure you want to log out?</h2>
-              <Link to="/" className="custom-link">
-                <button className="btn modal-yes-btn" onClick={handleLogout}>
-                  Yes
-                </button>
-              </Link>
-              <button className="btn modal-no-btn" onClick={toggleModal}>
-                No
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
