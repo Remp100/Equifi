@@ -4,8 +4,7 @@ Missing Account Settings page (wait for the rework of the Profile page)(wait for
 The colors of Mattermost for the pages (wait for the Dark mode #121317 for the sidebar and #25262a for hover)
 Inconsistent profile picture in dropdown menu.
 Missing history of rejection for the user as admin on Dashboard.
-Placeholder page for Profile page.
+Placeholder page for Profile page. [TO DO]
 Can't save the same asset on Watchlist page.
 The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)
 Missing functinality for 3rd and 4th search to update the chart and Monte Carlo Chart.
-Multiple issues on online site.
