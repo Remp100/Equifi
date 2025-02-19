@@ -18,31 +18,36 @@ export default function ForgotPassword() {
 
   useEffect(() => {
     if (isAlertVisible) {
+      setAlertFadeOut(false); // Reset fade-out if a new alert is triggered
       const timer = setTimeout(() => {
         setAlertFadeOut(true);
-        setTimeout(() => {
+        const fadeOutTimer = setTimeout(() => {
           setIsAlertVisible(false);
           setAlertFadeOut(false);
         }, 500);
+        return () => clearTimeout(fadeOutTimer);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isAlertVisible]);
 
+  const triggerAlert = (message, type) => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setIsAlertVisible(true);
+    setAlertFadeOut(false); // Ensure fade-out is reset when triggering a new alert
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!email || !confirmEmail) {
-      setAlertMessage("Please enter an email in both fields!");
-      setAlertType("error");
-      setIsAlertVisible(true);
+      triggerAlert("Please enter an email in both fields!", "error");
       return;
     }
 
     if (email !== confirmEmail) {
-      setAlertMessage("Emails do not match!");
-      setAlertType("error"); // Set alert type to error
-      setIsAlertVisible(true);
+      triggerAlert("Emails do not match!", "error");
       return;
     }
 
@@ -52,22 +57,16 @@ export default function ForgotPassword() {
         { email }
       );
 
-      // Change this condition
       if (response.data.message) {
-        setAlertMessage(response.data.message);
-        setAlertType("success");
-        setIsAlertVisible(true);
+        triggerAlert(response.data.message, "success");
       } else {
-        setAlertMessage("An error occurred.");
-        setAlertType("error");
-        setIsAlertVisible(true);
+        triggerAlert("An error occurred.", "error");
       }
     } catch (error) {
-      setAlertMessage(
-        error.response?.data?.message || "An error occurred. Please try again."
+      triggerAlert(
+        error.response?.data?.message || "An error occurred. Please try again.",
+        "error"
       );
-      setAlertType("error");
-      setIsAlertVisible(true);
     }
   };
 

@@ -41,6 +41,8 @@ export default function DashboardPortfolios() {
   const navigate = useNavigate();
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const portfoliosPerPage = 3;
   const apiKey = process.env.REACT_APP_API_KEY;
 
   // Effect to check login status on component mount
@@ -851,6 +853,123 @@ export default function DashboardPortfolios() {
     );
   };
 
+  // Pagination Logic
+  const totalPages = Math.ceil(portfolioData.length / portfoliosPerPage);
+  const indexOfLastPortfolio = currentPage * portfoliosPerPage;
+  const indexOfFirstPortfolio = indexOfLastPortfolio - portfoliosPerPage;
+  const currentPortfolios = portfolioData.slice(
+    indexOfFirstPortfolio,
+    indexOfLastPortfolio
+  );
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const paginationButtons = [];
+
+    // Previous Page Button
+    paginationButtons.push(
+      <button
+        key="prev"
+        className={`pagination-button ${currentPage === 1 ? "disabled" : ""}`}
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        {"<"} Pagina anterioara
+      </button>
+    );
+
+    // Page Numbers (1, 2, ..., Last)
+    if (totalPages <= 3) {
+      for (let i = 1; i <= totalPages; i++) {
+        paginationButtons.push(
+          <button
+            key={i}
+            className={`pagination-button ${currentPage === i ? "active" : ""}`}
+            onClick={() => goToPage(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+    } else {
+      paginationButtons.push(
+        <button
+          key={1}
+          className={`pagination-button ${currentPage === 1 ? "active" : ""}`}
+          onClick={() => goToPage(1)}
+        >
+          1
+        </button>
+      );
+
+      if (currentPage > 3) {
+        paginationButtons.push(
+          <span key="ellipsis1" className="pagination-ellipsis">
+            ...
+          </span>
+        );
+      }
+
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = startPage; i <= endPage; i++) {
+        paginationButtons.push(
+          <button
+            key={i}
+            className={`pagination-button ${currentPage === i ? "active" : ""}`}
+            onClick={() => goToPage(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+
+      if (currentPage < totalPages - 2) {
+        paginationButtons.push(
+          <span key="ellipsis2" className="pagination-ellipsis">
+            ...
+          </span>
+        );
+      }
+
+      paginationButtons.push(
+        <button
+          key={totalPages}
+          className={`pagination-button ${
+            currentPage === totalPages ? "active" : ""
+          }`}
+          onClick={() => goToPage(totalPages)}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Next Page Button
+    paginationButtons.push(
+      <button
+        key="next"
+        className={`pagination-button ${
+          currentPage === totalPages ? "disabled" : ""
+        }`}
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage === totalPages}
+      >
+        Pagina urmatoare {">"}
+      </button>
+    );
+
+    return <div className="pagination-container">{paginationButtons}</div>;
+  };
+
   return (
     <div className="dashboard">
       <div className="sidebar">
@@ -933,7 +1052,7 @@ export default function DashboardPortfolios() {
                     </tr>
                   </thead>
                   <tbody>
-                    {portfolioData.map((portfolio, index) => (
+                    {currentPortfolios.map((portfolio, index) => (
                       <tr key={index}>
                         <td>{index + 1}</td>
                         <td>
@@ -1048,6 +1167,7 @@ export default function DashboardPortfolios() {
                   </tbody>
                 </table>
               </div>
+              {renderPagination()}
             </div>
           ) : (
             <div className="warning-container">

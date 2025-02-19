@@ -116,7 +116,6 @@ export default function DashboardInvest() {
   const [historicalDates, setHistoricalDates] = useState([]);
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [assetsReturn, setAssetsReturn] = useState([]);
   const [assetsVol, setAssetsVol] = useState([]);
   const [assetsCorrelationMatrix, setAssetsCorrelationMatrix] = useState([]);
@@ -140,6 +139,7 @@ export default function DashboardInvest() {
   const [isAlertVisible, setIsAlertVisible] = useState(true);
   const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   // Effect to check login status when component mounts
   useEffect(() => {
@@ -240,8 +240,8 @@ export default function DashboardInvest() {
       `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${apiKey}`
     )
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 429) {
+          setApiError(true); // API expired alert
         }
         return response.json();
       })
@@ -391,6 +391,7 @@ export default function DashboardInvest() {
     });
     setShowInputA(false);
     setAssetSymbolA(symbol ? symbol : "");
+    setShouldRecalculate(true);
   };
 
   // Function to handle click on a suggestion for asset B
@@ -403,6 +404,7 @@ export default function DashboardInvest() {
     });
     setShowInputB(false);
     setAssetSymbolB(symbol ? symbol : "");
+    setShouldRecalculate(true);
   };
 
   // Function to handle click on a suggestion for asset C
@@ -415,6 +417,7 @@ export default function DashboardInvest() {
     });
     setShowInputC(false);
     setAssetSymbolC(symbol ? symbol : "");
+    setShouldRecalculate(true);
   };
 
   // Function to handle click on a suggestion for asset D
@@ -427,6 +430,7 @@ export default function DashboardInvest() {
     });
     setShowInputD(false);
     setAssetSymbolD(symbol ? symbol : "");
+    setShouldRecalculate(true);
   };
 
   // Function to handle input focus for asset A
@@ -578,8 +582,6 @@ export default function DashboardInvest() {
     const fetchAndProcessData = async () => {
       if (!shouldRecalculate) return;
 
-      setIsLoading(true);
-
       const symbols = [
         assetSymbolA,
         assetSymbolB,
@@ -594,7 +596,6 @@ export default function DashboardInvest() {
       ];
 
       if (symbols.length < 2) {
-        setIsLoading(false);
         return;
       }
 
@@ -612,7 +613,12 @@ export default function DashboardInvest() {
         const url = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
 
         return fetch(url)
-          .then((response) => response.json())
+          .then((response) => {
+            if (response.status === 429) {
+              setApiError(true);
+            }
+            return response.json();
+          })
           .then((data) => {
             if (interval === "Daily") {
               const groupedByDate = data.reduce((acc, cur) => {
@@ -667,7 +673,6 @@ export default function DashboardInvest() {
       sessionStorage.setItem("meanReturns", JSON.stringify(meanReturns));
 
       setShouldRecalculate(false);
-      setIsLoading(false);
     };
 
     if (startDate && endDate && interval !== "Interval") {
@@ -681,7 +686,6 @@ export default function DashboardInvest() {
     startDate,
     endDate,
     interval,
-    apiKey,
     calculateCorrelationMatrix,
     shouldRecalculate,
   ]);
@@ -878,11 +882,12 @@ export default function DashboardInvest() {
 
   useEffect(() => {
     // Check if risk-free rate is cached in session storage
-    const cachedRate = sessionStorage.getItem("riskFreeRate");
+
+    const cachedRate = 4.47;
 
     if (cachedRate) {
       // If cached rate exists, set it as the risk-free rate
-      setRiskFreeRate(parseFloat(cachedRate));
+      setRiskFreeRate(cachedRate);
     } else {
       // If cached rate doesn't exist, fetch the first risk-free rate data point
       async function fetchRiskFreeRate() {
@@ -1101,7 +1106,13 @@ export default function DashboardInvest() {
       const normalizedWeightSum = weights.reduce((acc, curr) => acc + curr, 0);
       weights = weights.map((weight) => weight / normalizedWeightSum);
 
+      // Debug weights
+      console.log(`⚖️ Portfolio ${i} Weights:`, weights);
+
       const portfolioMetrics = calculatePortfolioMetrics(weights);
+
+      // Debug portfolio metrics
+      console.log(`📊 Portfolio ${i} Metrics:`, portfolioMetrics);
 
       portfolios.push({ ...portfolioMetrics, weights });
     }
@@ -1109,39 +1120,96 @@ export default function DashboardInvest() {
     return portfolios;
   }, [assetsReturn, calculatePortfolioMetrics]);
 
-  // Function to generate Monte Carlo portfolios and efficient frontier data
   useEffect(() => {
-    if (!dataFetched) return;
+    console.log("🟡 Debug Before Monte Carlo:");
+    console.log("📌 assetsReturn:", assetsReturn);
+    console.log("📌 assetsVol:", assetsVol);
+    console.log("📌 assetsCorrelationMatrix:", assetsCorrelationMatrix);
+  }, [assetsReturn, assetsVol, assetsCorrelationMatrix]);
+
+  useEffect(() => {
+    console.log("🔄 Checking Monte Carlo Data...");
 
     const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
     const cachedEfficientFrontierData = sessionStorage.getItem(
       "efficientFrontierData"
     );
 
-    if (cachedMonteCarloData && cachedEfficientFrontierData) {
-      // Use cached data if available
-      console.log("🟢 Using cached Monte Carlo and Efficient Frontier data.");
-      setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
-      setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
-    } else if (riskFreeRate !== null) {
-      console.log(
-        "🔄 No cache found. Generating new Monte Carlo & Efficient Frontier data..."
-      );
-      // Generate new data and store it
-      const mcPortfolios = generateRandomPortfolios();
-      const efData = findEfficientFrontier();
-      setMonteCarloPortfolios(mcPortfolios);
-      setEfficientFrontierData(efData);
+    const assetSymbols = [
+      assetSymbolA,
+      assetSymbolB,
+      assetSymbolC,
+      assetSymbolD,
+    ].filter(Boolean);
+    const cachedAssets = sessionStorage.getItem("cachedAssets");
 
-      sessionStorage.setItem(
-        "monteCarloPortfolios",
-        JSON.stringify(mcPortfolios)
-      );
-      sessionStorage.setItem("efficientFrontierData", JSON.stringify(efData));
+    const hasAssetChanged = cachedAssets
+      ? JSON.stringify(assetSymbols) !== cachedAssets
+      : true;
+
+    // ✅ New condition: Wait for assetsReturn, assetsVol, and assetsCorrelationMatrix to be ready
+    if (
+      assetSymbols.length >= 2 &&
+      startDate !== null &&
+      endDate !== null &&
+      interval !== "Interval" &&
+      riskFreeRate !== null &&
+      assetsReturn.length >= 2 &&
+      assetsVol.length >= 2 &&
+      assetsCorrelationMatrix.length >= 2
+    ) {
+      console.log("✅ All conditions met for Monte Carlo...");
+
+      if (hasAssetChanged) {
+        console.log("⚠️ Assets changed, clearing cache...");
+        sessionStorage.removeItem("monteCarloPortfolios");
+        sessionStorage.removeItem("efficientFrontierData");
+        sessionStorage.setItem("cachedAssets", JSON.stringify(assetSymbols));
+        setMonteCarloPortfolios([]);
+        setEfficientFrontierData([]);
+        setDataFetched(false);
+      }
+
+      if (
+        !hasAssetChanged &&
+        cachedMonteCarloData &&
+        cachedEfficientFrontierData
+      ) {
+        console.log("♻️ Using cached Monte Carlo data...");
+        setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
+        setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
+        setDataFetched(true);
+      } else {
+        console.log("⚡ Generating NEW Monte Carlo data...");
+        const mcPortfolios = generateRandomPortfolios();
+        const efData = findEfficientFrontier();
+
+        console.log("📊 Monte Carlo Portfolios:", mcPortfolios);
+        console.log("📈 Efficient Frontier Data:", efData);
+
+        setMonteCarloPortfolios(mcPortfolios);
+        setEfficientFrontierData(efData);
+        setDataFetched(true);
+
+        sessionStorage.setItem(
+          "monteCarloPortfolios",
+          JSON.stringify(mcPortfolios)
+        );
+        sessionStorage.setItem("efficientFrontierData", JSON.stringify(efData));
+      }
     }
   }, [
+    assetSymbolA,
+    assetSymbolB,
+    assetSymbolC,
+    assetSymbolD,
+    startDate,
+    endDate,
+    interval,
     riskFreeRate,
-    dataFetched,
+    assetsReturn, // ✅ Added assetsReturn
+    assetsVol, // ✅ Added assetsVol
+    assetsCorrelationMatrix, // ✅ Added assetsCorrelationMatrix
     generateRandomPortfolios,
     findEfficientFrontier,
   ]);
@@ -1155,54 +1223,40 @@ export default function DashboardInvest() {
 
   // Effect to update Monte Carlo chart with new data
   useEffect(() => {
-    // 🟡 Check if we have valid Monte Carlo data
-    const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
-    const cachedEfficientFrontierData = sessionStorage.getItem(
-      "efficientFrontierData"
-    );
+    console.log("🔄 Checking Monte Carlo Chart Data...");
+    console.log("📊 Monte Carlo Portfolios:", monteCarloPortfolios);
+    console.log("📈 Efficient Frontier Data:", efficientFrontierData);
 
-    if (!dataFetched && cachedMonteCarloData && cachedEfficientFrontierData) {
-      console.log(
-        "🔄 Restoring Monte Carlo and Efficient Frontier Data from Cache..."
-      );
-      setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
-      setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
-      setDataFetched(true); // ✅ Ensure we mark data as fetched
-    }
-
-    if (
-      !dataFetched ||
-      !Array.isArray(efficientFrontierData.portfolios) ||
-      !monteCarloPortfolios.length ||
-      step !== 5
-    ) {
-      console.log("⚠️ Monte Carlo Chart Data Not Ready Yet, Waiting...");
+    if (!dataFetched) {
+      console.warn("⚠️ Data not yet fetched, waiting...");
       return;
     }
 
-    console.log("🟢 Rendering Monte Carlo Chart...");
+    if (!monteCarloPortfolios.length) {
+      console.error(
+        "🚨 No Monte Carlo Portfolios available! Chart cannot render."
+      );
+      return;
+    }
 
-    // ✅ Format data for Efficient Frontier
-    const formattedEfficientFrontierData = efficientFrontierData.portfolios.map(
-      (portfolio) => ({
-        x: portfolio.volatility,
-        y: portfolio.return,
-        metrics: portfolio,
-      })
-    );
+    if (
+      !efficientFrontierData.portfolios ||
+      efficientFrontierData.portfolios.length === 0
+    ) {
+      console.error(
+        "🚨 No Efficient Frontier Data available! Chart cannot render."
+      );
+      return;
+    }
 
-    // ✅ Format data for Monte Carlo Portfolios with slight randomness
-    const formattedRandomPortfolios = monteCarloPortfolios.map((portfolio) => ({
-      x: portfolio.volatility + (Math.random() - 0.5) * 0.1,
-      y: portfolio.return + (Math.random() - 0.5) * 0.1,
-      metrics: portfolio,
-    }));
+    if (!chartContainerRef.current) {
+      console.error("🚨 Chart container ref is null! Cannot initialize chart.");
+      return;
+    }
 
-    // ✅ Ensure chart container exists
-    if (!chartContainerRef.current) return;
     const ctx = chartContainerRef.current.getContext("2d");
 
-    // ✅ Destroy previous chart before re-rendering
+    // Destroy previous chart instance if it exists
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy();
     }
@@ -1214,7 +1268,11 @@ export default function DashboardInvest() {
         datasets: [
           {
             label: "Efficient Frontier",
-            data: formattedEfficientFrontierData,
+            data: efficientFrontierData.portfolios.map((portfolio) => ({
+              x: portfolio.volatility,
+              y: portfolio.return,
+              metrics: portfolio,
+            })),
             backgroundColor: "transparent",
             borderColor: "red",
             borderWidth: 2,
@@ -1224,7 +1282,11 @@ export default function DashboardInvest() {
           },
           {
             label: "Random Portfolios",
-            data: formattedRandomPortfolios,
+            data: monteCarloPortfolios.map((portfolio) => ({
+              x: portfolio.volatility + (Math.random() - 0.5) * 0.1,
+              y: portfolio.return + (Math.random() - 0.5) * 0.1,
+              metrics: portfolio,
+            })),
             backgroundColor: "rgba(128, 128, 128, 0.5)",
             pointRadius: 3,
           },
@@ -1268,10 +1330,15 @@ export default function DashboardInvest() {
 
             if (clickedData && clickedData.metrics) {
               const clickedPortfolio = clickedData.metrics;
+
+              // ✅ Restore cached mean returns or use fallback
               const meanReturns =
                 JSON.parse(sessionStorage.getItem("meanReturns")) || [];
+
+              // ✅ Calculate the best outcome return (e.g., 99% percentile)
               const bestOutcomeReturn = calculateBestOutcome(0.99, meanReturns);
 
+              // ✅ Format portfolio component weights
               const portfolioComponents = clickedPortfolio.weights
                 ? clickedPortfolio.weights
                     .map((weight, index) => {
@@ -1288,13 +1355,15 @@ export default function DashboardInvest() {
                     .filter(Boolean)
                 : [];
 
+              // ✅ Store clicked portfolio info
               const cardInfo = {
                 return: clickedPortfolio.return.toFixed(2),
                 volatility: clickedPortfolio.volatility.toFixed(2),
-                bestOutcomeReturn: bestOutcomeReturn.toFixed(2),
+                bestOutcomeReturn: bestOutcomeReturn.toFixed(2), // ✅ Added best outcome
                 portfolioComponents,
               };
 
+              // ✅ Update clicked portfolios
               setClickedInfos((prevInfos) => [...prevInfos, cardInfo]);
             }
           }
@@ -1311,8 +1380,7 @@ export default function DashboardInvest() {
   }, [
     monteCarloPortfolios,
     efficientFrontierData,
-    assetsReturn,
-    calculateBestOutcome,
+    calculateBestOutcome, // ✅ Added to dependencies
     assetSymbolA,
     assetSymbolB,
     assetSymbolC,
@@ -1426,7 +1494,6 @@ export default function DashboardInvest() {
   useEffect(() => {
     if (dataFetched) {
       updateLineChartData();
-      sessionStorage.setItem("lineChartData", JSON.stringify(lineChartData));
     }
   }, [
     dataFetched,
@@ -1669,6 +1736,19 @@ export default function DashboardInvest() {
           </button>
         </div>
       );
+    } else if (apiError) {
+      return (
+        <div className="alert error">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+          API limit reached! Please wait or use a different API key.
+          <button
+            className="alert close-btn"
+            onClick={() => setApiError(false)}
+          >
+            X
+          </button>
+        </div>
+      );
     }
     return null;
   };
@@ -1734,49 +1814,50 @@ export default function DashboardInvest() {
     }
   };
 
-  const fetchCompanyName = async (symbol, setSearchResult, setShowInput) => {
-    if (!symbol) return;
+  const fetchCompanyName = useCallback(
+    async (symbol, setSearchResult, setShowInput) => {
+      if (!symbol) return;
 
-    console.log(`🟡 fetchCompanyName triggered for ${symbol}`);
+      console.log(`🟡 fetchCompanyName triggered for ${symbol}`);
 
-    // 🔥 Check if name is already stored to prevent API call
-    const storedResult = [
-      searchResultA,
-      searchResultB,
-      searchResultC,
-      searchResultD,
-    ]
-      .flat()
-      .find((result) => result?.symbol === symbol);
+      // 🔥 Check if name is already stored to prevent API call
+      const storedResult = [
+        searchResultA,
+        searchResultB,
+        searchResultC,
+        searchResultD,
+      ]
+        .flat()
+        .find((result) => result?.symbol === symbol);
 
-    if (storedResult) {
-      console.log(
-        `✅ Found cached name: ${storedResult.name} for ${symbol}, skipping API call.`
-      );
-      setSearchResult([{ name: storedResult.name, symbol }]);
-      setShowInput(false);
-      console.log(storedResult);
-      return;
-    }
-
-    // Only fetch if name is missing
-    console.log(`❌ No cache found for ${symbol}, making API call...`);
-    try {
-      const response = await fetch(
-        `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${apiKey}`
-      );
-
-      console.log(response);
-      const data = await response.json();
-
-      if (data.length > 0) {
-        setSearchResult([{ name: data[0].companyName, symbol }]);
+      if (storedResult) {
+        console.log(
+          `✅ Found cached name: ${storedResult.name} for ${symbol}, skipping API call.`
+        );
+        setSearchResult([{ name: storedResult.name, symbol }]);
         setShowInput(false);
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching company name:", error);
-    }
-  };
+
+      // Only fetch if name is missing
+      console.log(`❌ No cache found for ${symbol}, making API call...`);
+      try {
+        const response = await fetch(
+          `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${apiKey}`
+        );
+
+        const data = await response.json();
+
+        if (data.length > 0) {
+          setSearchResult([{ name: data[0].companyName, symbol }]);
+          setShowInput(false);
+        }
+      } catch (error) {
+        console.error("Error fetching company name:", error);
+      }
+    },
+    [searchResultA, searchResultB, searchResultC, searchResultD]
+  );
 
   useEffect(() => {
     console.log("🔄 Running useEffect to restore search results...");
@@ -1797,7 +1878,17 @@ export default function DashboardInvest() {
       console.log(`🔎 Attempting to restore Asset D: ${assetSymbolD}`);
       fetchCompanyName(assetSymbolD, setSearchResultD, setShowInputD);
     }
-  }, [assetSymbolA, assetSymbolB, assetSymbolC, assetSymbolD]);
+  }, [
+    assetSymbolA,
+    assetSymbolB,
+    assetSymbolC,
+    assetSymbolD,
+    fetchCompanyName,
+    searchResultA,
+    searchResultB,
+    searchResultC,
+    searchResultD,
+  ]);
 
   // 🔹 **Save Only Search Results to Cache**
   useEffect(() => {
@@ -1840,11 +1931,11 @@ export default function DashboardInvest() {
   useEffect(() => {
     console.log("♻️ Restoring saved state from session storage...");
 
-    // Restore cached asset symbols, dates, and interval
     const cachedData = sessionStorage.getItem(CACHE_KEY);
     if (cachedData) {
       const parsedData = JSON.parse(cachedData);
 
+      setStep(parsedData.step || 0);
       setAssetSymbolA(parsedData.assetSymbolA || "");
       setAssetSymbolB(parsedData.assetSymbolB || "");
       setAssetSymbolC(parsedData.assetSymbolC || "");
@@ -1895,18 +1986,19 @@ export default function DashboardInvest() {
       setLineChartData(JSON.parse(cachedLineChartData));
     }
 
-    // Restore Monte Carlo and Efficient Frontier data
+    // 🟡 Restore Monte Carlo and Efficient Frontier data
     const cachedMonteCarloData = sessionStorage.getItem("monteCarloPortfolios");
     const cachedEfficientFrontierData = sessionStorage.getItem(
       "efficientFrontierData"
     );
 
-    if (cachedMonteCarloData) {
+    if (cachedMonteCarloData && cachedEfficientFrontierData) {
+      console.log(
+        "♻️ Restoring Monte Carlo portfolios and Efficient Frontier..."
+      );
       setMonteCarloPortfolios(JSON.parse(cachedMonteCarloData));
-    }
-
-    if (cachedEfficientFrontierData) {
       setEfficientFrontierData(JSON.parse(cachedEfficientFrontierData));
+      setDataFetched(true); // ✅ Fix: Set dataFetched to true so the chart renders!
     }
   }, []);
 
@@ -2371,7 +2463,7 @@ export default function DashboardInvest() {
                     />
                   )}
                 </div>
-                {interval !== "Interval" && !isLoading && (
+                {interval !== "Interval" && (
                   <button
                     onClick={handleNextStep}
                     className="btn next-btn"

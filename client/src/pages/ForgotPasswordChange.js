@@ -35,16 +35,25 @@ export default function ResetPassword() {
 
   useEffect(() => {
     if (isAlertVisible) {
+      setAlertFadeOut(false); // Reset fade-out if a new alert is triggered
       const timer = setTimeout(() => {
         setAlertFadeOut(true);
-        setTimeout(() => {
+        const fadeOutTimer = setTimeout(() => {
           setIsAlertVisible(false);
           setAlertFadeOut(false);
         }, 500);
+        return () => clearTimeout(fadeOutTimer);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isAlertVisible]);
+
+  const triggerAlert = (message, type) => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setIsAlertVisible(true);
+    setAlertFadeOut(false); // Ensure fade-out is reset when triggering a new alert
+  };
 
   const handleCloseWithFade = () => {
     setAlertFadeOut(true);
@@ -58,23 +67,17 @@ export default function ResetPassword() {
     event.preventDefault();
 
     if (!password || !confirmPassword) {
-      setAlertMessage("Please enter a password in both fields!");
-      setAlertType("error");
-      setIsAlertVisible(true);
+      triggerAlert("Please enter a password in both fields!", "error");
       return;
     }
 
     if (password !== confirmPassword) {
-      setAlertMessage("Passwords do not match!");
-      setAlertType("error");
-      setIsAlertVisible(true);
+      triggerAlert("Passwords do not match!", "error");
       return;
     }
 
     if (password.length < 4) {
-      setAlertMessage("Password must be at least 4 characters long!");
-      setAlertType("error");
-      setIsAlertVisible(true);
+      triggerAlert("Password must be at least 4 characters long!", "error");
       return;
     }
 
@@ -88,24 +91,19 @@ export default function ResetPassword() {
       );
 
       if (response.data.success) {
-        setAlertMessage("Password changed successfully!");
-        setAlertType("success");
-        setIsAlertVisible(true);
+        triggerAlert("Password changed successfully!", "success");
 
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       } else {
-        // If the server response indicates the token is invalid, redirect
         if (
           response.data.message &&
           response.data.message.toLowerCase().includes("expired")
         ) {
           navigate("/404");
         } else {
-          setAlertMessage(response.data.message || "An error occurred.");
-          setAlertType("error");
-          setIsAlertVisible(true);
+          triggerAlert(response.data.message || "An error occurred.", "error");
         }
       }
     } catch (error) {
@@ -116,12 +114,11 @@ export default function ResetPassword() {
       ) {
         navigate("/404");
       } else {
-        setAlertMessage(
+        triggerAlert(
           error.response?.data?.message ||
-            "An error occurred. Please try again."
+            "An error occurred. Please try again.",
+          "error"
         );
-        setAlertType("error");
-        setIsAlertVisible(true);
       }
     }
   };

@@ -8,6 +8,8 @@ import {
   faChartLine,
   faEye,
   faFolder,
+  faCheck,
+  faExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardProfile() {
@@ -44,8 +46,7 @@ export default function DashboardProfile() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [alert, setAlert] = useState(null);
   const navigate = useNavigate();
 
   // Check login status on component mount
@@ -143,7 +144,10 @@ export default function DashboardProfile() {
 
       if (response.status === 200) {
         console.log("Saved successfully:", response.data);
-        setProfileData(userData);
+        setProfileData({
+          ...userData,
+          email: profileData.email,
+        });
         setEditMode(false);
         setPronoun(pronounInput || profileData.pronoun);
         setChangePasswordMode(false);
@@ -158,25 +162,31 @@ export default function DashboardProfile() {
   const resetModes = () => {
     setEditMode(false);
     setChangePasswordMode(false);
-    setErrorMessage("");
+    setAlert(null);
   };
 
   // Function to handle password change
   const handlePasswordChange = async () => {
     if (!currentPassword.trim()) {
-      setErrorMessage("Please enter your current password");
+      setAlert({
+        type: "warning",
+        message: "Please enter your current password",
+      });
       return;
     }
     if (!newPassword.trim()) {
-      setErrorMessage("Please enter a new password");
+      setAlert({ type: "warning", message: "Please enter a new password" });
       return;
     }
     if (newPassword.length < 4) {
-      setErrorMessage("Password must be at least 4 characters");
+      setAlert({
+        type: "warning",
+        message: "Password must be at least 4 characters",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setErrorMessage("Passwords do not match");
+      setAlert({ type: "warning", message: "Passwords do not match" });
       return;
     }
 
@@ -191,20 +201,38 @@ export default function DashboardProfile() {
       );
 
       if (response.status === 200) {
-        setSuccessMessage("Password changed successfully");
+        setAlert({ type: "success", message: "Password changed successfully" });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
         setTimeout(() => {
-          setSuccessMessage("");
+          setAlert(null);
           setChangePasswordMode(false);
         }, 2000);
-      } else {
-        setErrorMessage("Failed to change password. Try again.");
       }
     } catch (error) {
       console.error("Error changing password:", error.message);
-      setErrorMessage("Error occurred. Try again.");
+
+      // Check for specific error response
+      if (error.response) {
+        if (error.response.status === 401) {
+          setAlert({
+            type: "warning",
+            message: "Incorrect current password",
+          });
+        } else {
+          setAlert({
+            type: "error",
+            message:
+              error.response.data.message || "Error occurred. Try again.",
+          });
+        }
+      } else {
+        setAlert({
+          type: "error",
+          message: "Error occurred. Try again.",
+        });
+      }
     }
   };
 
@@ -213,9 +241,51 @@ export default function DashboardProfile() {
     if (!changePasswordMode) {
       setNewPassword("");
       setConfirmPassword("");
-      setErrorMessage("");
+      setAlert(null);
     }
   }, [changePasswordMode]);
+
+  useEffect(() => {
+    if (alert) {
+      const timer = setTimeout(() => {
+        handleCloseWithFade();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [alert]);
+
+  const handleCloseWithFade = () => {
+    const alertElement = document.querySelector(".alert");
+    if (alertElement) {
+      alertElement.classList.add("fade-out");
+      setTimeout(() => {
+        if (alertElement.classList.contains("fade-out")) {
+          setAlert(null);
+        }
+      }, 500);
+    } else {
+      setAlert(null);
+    }
+  };
+
+  const renderAlert = () => {
+    if (!alert) return null;
+    const { type, message } = alert;
+    const alertClass = `alert ${type}`;
+
+    return (
+      <div className={alertClass}>
+        <FontAwesomeIcon
+          icon={type === "success" ? faCheck : faExclamation}
+          className="mr-2"
+        />
+        {message}
+        <button className="alert close-btn" onClick={handleCloseWithFade}>
+          X
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="dashboard">
@@ -242,6 +312,7 @@ export default function DashboardProfile() {
         </nav>
       </div>
       <div className="main-content profile-page">
+        <div className="status-holder">{renderAlert()}</div>
         <div className="profile-container">
           <h2 className="profile-title">
             {changePasswordMode ? "Change Password" : "Profile Information"}
@@ -511,13 +582,6 @@ export default function DashboardProfile() {
               </>
             )}
           </div>
-
-          <div>
-            <span className="error-message">{errorMessage}</span>
-          </div>
-          {successMessage && (
-            <div className="success-message">{successMessage}</div>
-          )}
         </div>
       </div>
     </div>

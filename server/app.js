@@ -540,7 +540,7 @@ app.post("/save-asset", async (req, res) => {
   const { email, assetSymbol, interval, startDate, endDate } = req.body;
 
   try {
-    // Format dates as ISO strings
+    // Format dates as ISO strings for consistency
     const asset = {
       assetSymbol,
       interval,
@@ -554,16 +554,24 @@ app.post("/save-asset", async (req, res) => {
       .collection("users")
       .findOne({ email });
 
-    // Check if the asset is already saved
+    // Check if the asset already exists with the same properties
     if (
       user &&
       user.savedAssets &&
-      user.savedAssets.some((a) => a.assetSymbol === assetSymbol)
+      user.savedAssets.some(
+        (a) =>
+          a.assetSymbol === assetSymbol &&
+          a.startDate === asset.startDate &&
+          a.endDate === asset.endDate &&
+          a.interval === asset.interval
+      )
     ) {
-      return res.status(400).json({ message: "Asset is already saved." });
+      return res
+        .status(400)
+        .json({ message: "Asset with the same settings is already saved." });
     }
 
-    // Add the new asset
+    // Save the new asset
     await client
       .db("portfolio_login_db")
       .collection("users")
@@ -573,10 +581,10 @@ app.post("/save-asset", async (req, res) => {
         { upsert: true }
       );
 
-    console.log("Asset saved successfully");
+    console.log("✅ Asset saved successfully");
     res.sendStatus(200);
   } catch (error) {
-    console.error("Error saving asset:", error.message);
+    console.error("❌ Error saving asset:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -974,7 +982,7 @@ app.post("/change-password", async (req, res) => {
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res
-        .status(400)
+        .status(401)
         .json({ success: false, message: "Incorrect current password." });
     }
 

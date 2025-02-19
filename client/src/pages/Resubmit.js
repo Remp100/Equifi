@@ -25,7 +25,30 @@ export default function ResubmitData() {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [fileName, setFileName] = useState("No file chosen");
   const [alert, setAlert] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch("http://localhost:3002/", {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await response.json();
+        setIsLoggedIn(data.valid);
+      } catch (error) {
+        console.error("Error checking login status:", error);
+      }
+    };
+    checkLoginStatus();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn === true) {
+      navigate("/dashboard");
+    }
+  }, [isLoggedIn, navigate]);
 
   // Function to trim the file name if too long
   const truncateFileName = (name, maxLength = 14) => {

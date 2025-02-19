@@ -20,6 +20,7 @@ import {
   faUserCog,
   faExclamation,
   faCheck,
+  faExclamationTriangle,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardWatchlist() {
@@ -58,6 +59,7 @@ export default function DashboardWatchlist() {
   const [isAlertVisible, setIsAlertVisible] = useState(false);
   const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   // Effect to check login status when component mounts
   useEffect(() => {
@@ -110,7 +112,13 @@ export default function DashboardWatchlist() {
       const newApiUrl = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?apikey=${apiKey}`;
 
       fetch(newApiUrl)
-        .then((response) => response.json())
+        .then((response) => {
+          if (response.status === 429) {
+            setApiError(true); // API expired alert
+            throw new Error("API limit reached (429)");
+          }
+          return response.json();
+        })
         .then((data) => {
           const filteredData = data.filter((item) => {
             const date = new Date(item.date);
@@ -400,8 +408,9 @@ export default function DashboardWatchlist() {
       `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${apiKey}`
     )
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 429) {
+          setApiError(true);
+          throw new Error("API limit reached (429)");
         }
         return response.json();
       })
@@ -639,6 +648,24 @@ export default function DashboardWatchlist() {
     return null;
   };
 
+  const renderApiError = () => {
+    if (apiError) {
+      return (
+        <div className="alert error">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+          API limit reached! Please wait or use a different API key.
+          <button
+            className="alert close-btn"
+            onClick={() => setApiError(false)}
+          >
+            X
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="dashboard">
       <div className="sidebar-watchlist">
@@ -665,6 +692,7 @@ export default function DashboardWatchlist() {
       <div className="main-content">
         <div className="alert-invest">{renderStatusMessage()}</div>
         <div className="alert-invest">{renderSuccessAlert()}</div>
+        <div className="alert-invest">{renderApiError()}</div>
         <div className="profile-dropdown-watchlist">
           <div className="nav-menu" ref={menuRef}>
             <div className="menu-trigger">

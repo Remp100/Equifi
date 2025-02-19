@@ -815,7 +815,6 @@ body {
 
 /* Portfolio Styles */
 .portfolio-data {
-  margin-top: 30px;
   display: flex;
   flex-direction: column;
 }
@@ -2405,4 +2404,41 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.pagination-button {
+  border: 1px solid #ccc;
+  background-color: white;
+  padding: 8px 12px;
+  margin: 0 4px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+.pagination-button:hover {
+  background-color: #f0f0f0;
+}
+
+.pagination-button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.pagination-button.disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+  padding: 0 10px;
+  font-size: 18px;
 }
