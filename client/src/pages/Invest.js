@@ -19,7 +19,7 @@ import {
   faMinus,
   faCalendarAlt,
   faSearch,
-  faUserCog,
+  // faUserCog,
   faRedoAlt,
   faExclamation,
   faCheck,
@@ -595,84 +595,90 @@ export default function DashboardInvest() {
         setFilteredDataD,
       ];
 
-      if (symbols.length < 2) {
-        return;
-      }
+      if (symbols.length < 2) return;
 
       const fetchInterval = interval === "Daily" ? "4hour" : interval;
-
       const formattedStartDate = formatDate(startDate);
       const formattedEndDate = formatDate(endDate);
 
-      const dataPromises = symbols.map((symbol, index) => {
-        if (!symbol) {
-          setters[index]([]);
-          return Promise.resolve([]);
+      try {
+        const dataPromises = symbols.map((symbol, index) => {
+          if (!symbol) {
+            setters[index]([]);
+            return Promise.resolve([]);
+          }
+
+          const url = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
+
+          return fetch(url)
+            .then((response) => {
+              if (!response.ok) {
+                if (response.status === 429) {
+                  throw new Error("API limit reached");
+                } else {
+                  throw new Error(
+                    `API request failed with status ${response.status}`
+                  );
+                }
+              }
+              return response.json();
+            })
+            .then((data) => {
+              if (interval === "Daily") {
+                const groupedByDate = data.reduce((acc, cur) => {
+                  const date = new Date(cur.date).toISOString().split("T")[0];
+                  if (!acc[date]) acc[date] = [];
+                  acc[date].push(cur.close);
+                  return acc;
+                }, {});
+
+                data = Object.entries(groupedByDate).map(([date, values]) => {
+                  const average =
+                    values.reduce((a, b) => a + b, 0) / values.length;
+                  return { date, close: average };
+                });
+              }
+
+              const closes = data.map((entry) => entry.close);
+              const returns = calculateReturns(closes);
+              const validReturns = returns.filter(
+                (r) => r !== null && r !== undefined
+              );
+
+              setters[index](validReturns);
+              setHistoricalDates(data.map((entry) => entry.date));
+              setAssetDataAvailability((prev) => ({
+                ...prev,
+                [String.fromCharCode(65 + index)]: validReturns.length > 0,
+              }));
+
+              return validReturns;
+            });
+        });
+
+        const allData = await Promise.all(dataPromises);
+
+        if (!allData.every((data) => data.length > 0)) {
+          throw new Error("One or more assets have no data available");
         }
 
-        const url = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
+        const meanReturns = allData.map((r) => calculateMeanReturn(r));
+        const volatilities = allData.map((r, index) =>
+          calculateVolatility(r, meanReturns[index])
+        );
+        const correlationMatrix = calculateCorrelationMatrix(allData);
 
-        return fetch(url)
-          .then((response) => {
-            if (response.status === 429) {
-              setApiError(true);
-            }
-            return response.json();
-          })
-          .then((data) => {
-            if (interval === "Daily") {
-              const groupedByDate = data.reduce((acc, cur) => {
-                const date = new Date(cur.date).toISOString().split("T")[0];
-                if (!acc[date]) acc[date] = [];
-                acc[date].push(cur.close);
-                return acc;
-              }, {});
-
-              data = Object.entries(groupedByDate).map(([date, values]) => {
-                const average =
-                  values.reduce((a, b) => a + b, 0) / values.length;
-                return { date, close: average };
-              });
-            }
-
-            const closes = data.map((entry) => entry.close);
-
-            const returns = calculateReturns(closes);
-
-            const validReturns = returns.filter(
-              (r) => r !== null && r !== undefined
-            );
-
-            setters[index](validReturns);
-            setHistoricalDates(data.map((entry) => entry.date));
-
-            setAssetDataAvailability((prev) => ({
-              ...prev,
-              [String.fromCharCode(65 + index)]: validReturns.length > 0,
-            }));
-
-            return validReturns;
-          });
-      });
-
-      const allData = await Promise.all(dataPromises);
-
-      const meanReturns = allData.map((r) => calculateMeanReturn(r));
-
-      const volatilities = allData.map((r, index) =>
-        calculateVolatility(r, meanReturns[index])
-      );
-
-      const correlationMatrix = calculateCorrelationMatrix(allData);
-
-      setAssetsReturn(meanReturns);
-      setAssetsVol(volatilities);
-      setAssetsCorrelationMatrix(correlationMatrix);
-      setDataFetched(true);
-
-      sessionStorage.setItem("meanReturns", JSON.stringify(meanReturns));
-
-      setShouldRecalculate(false);
+        setAssetsReturn(meanReturns);
+        setAssetsVol(volatilities);
+        setAssetsCorrelationMatrix(correlationMatrix);
+        setDataFetched(true);
+        sessionStorage.setItem("meanReturns", JSON.stringify(meanReturns));
+        setShouldRecalculate(false);
+      } catch (error) {
+        console.error("Error during data fetch and processing:", error.message);
+        setApiError(true); // ✅ Trigger API error alert
+        setDataFetched(false); // ✅ Ensure charts don't try to render empty data
+      }
     };
 
     if (startDate && endDate && interval !== "Interval") {
@@ -692,7 +698,7 @@ export default function DashboardInvest() {
 
   // Update line chart data when asset data is fetched
   useEffect(() => {
-    if (!dataFetched) return;
+    if (!dataFetched || apiError) return;
 
     const validSymbols = [
       assetSymbolA,
@@ -700,6 +706,7 @@ export default function DashboardInvest() {
       assetSymbolC,
       assetSymbolD,
     ].filter(Boolean);
+    if (validSymbols.length === 0 || historicalDates.length === 0) return;
 
     const reversedHistoricalDates = historicalDates.slice().reverse();
     const reversedFilteredDataA = filteredDataA.slice().reverse();
@@ -709,20 +716,18 @@ export default function DashboardInvest() {
 
     setLineChartData({
       labels: reversedHistoricalDates,
-      datasets: [
-        ...validSymbols.map((symbol, index) => ({
-          label: symbol,
-          data: [
-            reversedFilteredDataA,
-            reversedFilteredDataB,
-            reversedFilteredDataC,
-            reversedFilteredDataD,
-          ][index],
-          fill: false,
-          borderColor: ["green", "blue", "pink", "purple"][index],
-          tension: 0.1,
-        })),
-      ],
+      datasets: validSymbols.map((symbol, index) => ({
+        label: symbol,
+        data: [
+          reversedFilteredDataA,
+          reversedFilteredDataB,
+          reversedFilteredDataC,
+          reversedFilteredDataD,
+        ][index],
+        fill: false,
+        borderColor: ["green", "blue", "pink", "purple"][index],
+        tension: 0.1,
+      })),
     });
   }, [
     filteredDataA,
@@ -735,6 +740,7 @@ export default function DashboardInvest() {
     assetSymbolD,
     historicalDates,
     dataFetched,
+    apiError,
   ]);
 
   // Options for line chart
@@ -2468,6 +2474,7 @@ export default function DashboardInvest() {
                     onClick={handleNextStep}
                     className="btn next-btn"
                     disabled={
+                      apiError ||
                       !assetDataAvailability.A ||
                       !assetDataAvailability.B ||
                       !assetDataAvailability.C ||
@@ -2648,9 +2655,6 @@ export default function DashboardInvest() {
             </div>
             <div className={`dropdown-menu ${open ? "active" : "inactive"}`}>
               <div className="account-info">
-                <div className="account-initial">
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
                 <div className="account-details">
                   <div className="full-name">
                     {firstName} {lastName}
@@ -2662,10 +2666,10 @@ export default function DashboardInvest() {
                   <FontAwesomeIcon icon={faUser} className="menu-icon" />
                   Profile
                 </Link>
-                <Link to="/dashboard/profile" className="dropdown-item">
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
                   <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
                   Settings
-                </Link>
+                </Link> */}
                 <div className="dropdown-item" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
                   Log out

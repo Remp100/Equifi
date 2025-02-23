@@ -1,9 +1,0 @@
-Inconsistent profile picture in dropdown menu.
-Missing history of rejection for the user as admin on Dashboard.
-The width of the input search is moving based on how many saved assets are. (a slider can be added to see the saved assets instead of going down)
-Settings option present on dropdown profile.
-Missing check login functionality Forgot Password page.
-Missing check login functionality Profile page.
-Title crashes if the API runs out while changing the start date, end date or interval.
-Fadeout animation blocks new alerts to show properly. [TO DO]
-Missing special design for "here" text at reject admin alert. 

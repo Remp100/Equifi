@@ -11,7 +11,7 @@ import {
   faFolder,
   faUser,
   faSignOutAlt,
-  faUserCog,
+  // faUserCog,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function Dashboard() {
@@ -246,9 +246,6 @@ export default function Dashboard() {
               }`}
             >
               <div className="account-info">
-                <div className="account-initial">
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
                 <div className="account-details">
                   <div className="full-name">
                     {firstName} {lastName}
@@ -260,10 +257,10 @@ export default function Dashboard() {
                   <FontAwesomeIcon icon={faUser} className="menu-icon" />
                   Profile
                 </Link>
-                <Link to="/dashboard/profile" className="dropdown-item">
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
                   <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
                   Settings
-                </Link>
+                </Link> */}
                 <div className="dropdown-item" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
                   Log out

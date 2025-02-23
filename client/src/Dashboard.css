@@ -34,7 +34,7 @@ body {
 }
 
 .sidebar-watchlist {
-  width: 265px;
+  width: 256px;
   background-color: #1e325e;
   padding: 20px;
   color: #fff;
@@ -68,7 +68,7 @@ body {
 .profile-dropdown-dashboard {
   margin-top: 50px;
   margin-bottom: 55px;
-  margin-left: 1300px;
+  margin-left: 1321px;
   position: relative;
 }
 
@@ -280,7 +280,7 @@ body {
   justify-content: space-between; /* Ensure space between left and right sections */
   gap: 20px;
   width: 100%;
-  padding-top: 80px;
+  padding-top: 50px;
   padding-left: 60px;
 }
 
@@ -306,7 +306,7 @@ body {
 }
 
 .search-bar-watchlist input {
-  width: 188px;
+  width: 215px;
   padding: 10px;
   border: 1px solid #8d8d8d;
   border-radius: 4px;
@@ -321,7 +321,7 @@ body {
   list-style-type: none;
   padding: 0;
   margin: 0;
-  width: 99%;
+  width: 92%;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -430,7 +430,7 @@ body {
   padding-bottom: 13px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  width: 165px;
+  width: 189px;
   height: 10px;
   flex: 1;
 }
@@ -507,20 +507,24 @@ body {
 }
 
 .delete-asset {
-  position: absolute;
-  top: 0px;
-  right: 2px;
-  display: none;
-  color: red;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: white;
   border: none;
-  width: 20px;
-  height: 20px;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  background-color: #eaeaea;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background 0.3s ease;
 }
 
-.saved-assets li:hover .delete-asset {
-  display: block;
+.delete-asset:hover {
+  color: white;
 }
 
 .btn.view-asset:hover {
@@ -1559,7 +1563,7 @@ tbody tr:hover {
 }
 
 .interval-select-watchlist {
-  width: 100%;
+  width: 92%;
   padding: 10px;
   border: 1px solid #8d8d8d;
   border-radius: 4px;
@@ -1702,7 +1706,7 @@ tbody tr:hover {
 
 .toggle-section {
   position: absolute;
-  top: 270px; /* Adjust top position as needed */
+  top: 240px; /* Adjust top position as needed */
   right: 50px; /* Adjust right position as needed */
   display: flex;
   align-items: center;
@@ -1810,7 +1814,7 @@ tbody tr:hover {
 
 .search-icon-watchlist {
   position: absolute;
-  right: 15px;
+  right: 26px;
   top: 50%;
   transform: translateY(-50%);
   color: #007bff;
@@ -1906,11 +1910,25 @@ tbody tr:hover {
   padding-top: 1px;
 }
 
+.avatar-placeholder-dropdown {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #1e325e; /* Blue background */
+  color: white; /* White text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem; /* Larger font size */
+  font-weight: 500;
+  padding-top: 1px;
+}
+
 .dropdown-menu {
   position: absolute;
-  right: -83px;
+  right: -84px;
   background-color: #ffffff;
-  border-radius: var(--border-radius);
+  border-radius: 8px;
   width: 260px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   transition: all 0.3s;
@@ -1946,7 +1964,7 @@ tbody tr:hover {
 
 .dropdown-menu-dashboard {
   position: absolute;
-  right: 46px;
+  right: 44px;
   background-color: #ffffff;
   border-radius: 8px;
   width: 260px;
@@ -2018,8 +2036,9 @@ tbody tr:hover {
   margin: 0;
 }
 
-.dropdown-menu .dropdown-links {
-  all: unset;
+.dropdown-links {
+  margin-top: 10px;
+  padding-bottom: 1px;
 }
 
 .dropdown-menu .dropdown-links:hover {
@@ -2055,12 +2074,13 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   padding: 10px 15px;
-  padding-left: 75px;
+  padding-left: 90px;
   color: #000000;
   text-decoration: none;
   transition: background-color 0.2s;
   border-radius: 5px;
   cursor: pointer;
+  margin-bottom: 5px;
 }
 
 .dropdown-item:hover,
@@ -2163,10 +2183,6 @@ tbody tr:hover {
 
 .account-details {
   flex-grow: 1;
-}
-
-.dropdown-links {
-  padding: 10px 0;
 }
 
 .dropdown-item a {
@@ -2441,4 +2457,122 @@ tbody tr:hover {
 .pagination-ellipsis {
   padding: 0 10px;
   font-size: 18px;
+}
+
+/* Carousel Container */
+.carousel-container {
+  max-width: 350px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+}
+
+/* Slider Arrows */
+.carousel-container button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  cursor: pointer;
+  color: white;
+  background: #007bff;
+  outline: none;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.carousel-container button:hover {
+  background: #0056b3;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-container button:focus {
+  outline: none;
+}
+
+.carousel-container button[aria-label="Previous Slide"] {
+  left: -50px;
+}
+
+.carousel-container button[aria-label="Next Slide"] {
+  right: -50px;
+}
+
+/* Asset Card */
+.asset-card {
+  border: none;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  background: #f5f5f5;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.asset-card:hover {
+  background: #e9f5ff;
+}
+
+.asset-info {
+  margin-bottom: 15px;
+}
+
+.asset-info strong {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.asset-info div {
+  font-size: 16px;
+  color: #555;
+}
+
+/* Buttons within each asset card */
+.asset-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.asset-buttons button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.asset-buttons .view-asset {
+  background-color: #28a745;
+  color: white;
+}
+
+.asset-buttons .view-asset:hover {
+  background-color: #218838;
+}
+
+/* Slider Dots */
+.slick-dots {
+  bottom: -50px;
+}
+
+.slick-dots li button:before {
+  font-size: 12px;
+  color: #007bff;
+  opacity: 0.7;
+}
+
+.slick-dots li.slick-active button:before {
+  color: #007bff;
+  opacity: 1;
 }

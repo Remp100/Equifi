@@ -79,7 +79,6 @@ export default function Login() {
             <div className="alert-text">
               Admin approval rejected. Try again
               <Link to="/rejection" className="link-retry">
-                {" "}
                 here
               </Link>
             </div>

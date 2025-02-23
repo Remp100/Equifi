@@ -13,7 +13,7 @@ import {
   faFolder,
   faUser,
   faSignOutAlt,
-  faUserCog,
+  // faUserCog,
   faCheck,
   faExclamation,
 } from "@fortawesome/free-solid-svg-icons";
@@ -999,17 +999,12 @@ export default function DashboardPortfolios() {
             <div className="menu-trigger">
               <button className="avatar-button" onClick={() => setOpen(!open)}>
                 <div className="avatar-wrapper">
-                  {" "}
-                  {/* New wrapper div */}
                   <div className="avatar-placeholder">{initials}</div>
                 </div>
               </button>
             </div>
             <div className={`dropdown-menu ${open ? "active" : "inactive"}`}>
               <div className="account-info">
-                <div className="account-initial">
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
                 <div className="account-details">
                   <div className="full-name">
                     {firstName} {lastName}
@@ -1021,10 +1016,10 @@ export default function DashboardPortfolios() {
                   <FontAwesomeIcon icon={faUser} className="menu-icon" />
                   Profile
                 </Link>
-                <Link to="/dashboard/profile" className="dropdown-item">
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
                   <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
                   Settings
-                </Link>
+                </Link> */}
                 <div className="dropdown-item" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
                   Log out

@@ -57,11 +57,10 @@ export default function DashboardProfile() {
           withCredentials: true,
         });
         const { valid, email } = response.data;
-        if (valid && email) {
-          setIsLoggedIn(valid);
-          setEmail(email);
-          fetchProfileData(email);
-        }
+
+        setIsLoggedIn(valid);
+        setEmail(email || "");
+        fetchProfileData(email || "");
       } catch (error) {
         console.error("Error checking login status:", error);
       }
