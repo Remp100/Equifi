@@ -46,7 +46,7 @@ export default function Register() {
       }
     };
     checkLoginStatus();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, API_URL]);
 
   useEffect(() => {
     if (isLoggedIn === true) {

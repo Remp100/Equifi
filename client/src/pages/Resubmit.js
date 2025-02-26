@@ -44,7 +44,7 @@ export default function ResubmitData() {
       }
     };
     checkLoginStatus();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, API_URL]);
 
   useEffect(() => {
     if (isLoggedIn === true) {

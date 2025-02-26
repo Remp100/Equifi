@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "../Dashboard.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -52,6 +52,38 @@ export default function DashboardProfile() {
   const [alert, setAlert] = useState(null);
   const navigate = useNavigate();
 
+  // Function to fetch profile data for the given email
+  const fetchProfileData = useCallback(
+    async (email) => {
+      try {
+        const response = await axios.post(`${API_URL}/get-profile-data`, {
+          email,
+        });
+        if (response.status === 200) {
+          const data = response.data;
+          console.log("Fetched profile data:", data);
+          setProfileData(data);
+          setInputValues({
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            pronoun: data.pronoun || "",
+            country: data.country || "",
+            city: data.city || "",
+            state: data.state || "",
+            zipCode: data.zipCode || "",
+            street: data.street || "",
+            number: data.number || "",
+            phoneNumber: data.phoneNumber || "",
+          });
+          setSelectedPronoun(data.pronoun || "");
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error.message);
+      }
+    },
+    [API_URL]
+  );
+
   // Check login status on component mount
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -69,7 +101,7 @@ export default function DashboardProfile() {
     };
 
     checkLoginStatus();
-  }, [API_URL]);
+  }, [API_URL, fetchProfileData]);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -77,38 +109,6 @@ export default function DashboardProfile() {
       navigate("/login");
     }
   }, [isLoggedIn, navigate]);
-
-  // Function to fetch profile data for the given email
-  const fetchProfileData = async (email) => {
-    try {
-      const response = await axios.post(`${API_URL}/get-profile-data`, {
-        email: email,
-      });
-      if (response.status === 200) {
-        const data = response.data;
-        console.log("Fetched profile data:", data);
-        setProfileData(data);
-
-        // Ensure all fields have default empty string values
-        setInputValues({
-          firstName: data.firstName || "",
-          lastName: data.lastName || "",
-          pronoun: data.pronoun || "",
-          country: data.country || "",
-          city: data.city || "",
-          state: data.state || "",
-          zipCode: data.zipCode || "",
-          street: data.street || "",
-          number: data.number || "",
-          phoneNumber: data.phoneNumber || "",
-        });
-
-        setSelectedPronoun(data.pronoun || "");
-      }
-    } catch (error) {
-      console.error("Error fetching profile data:", error.message);
-    }
-  };
 
   // Function to handle pronoun selection
   const handlePronounSelect = (pronoun) => {
