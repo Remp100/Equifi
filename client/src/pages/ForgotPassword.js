@@ -36,7 +36,7 @@ export default function ForgotPassword() {
       }
     };
     checkLoginStatus();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, API_URL]);
 
   useEffect(() => {
     if (isLoggedIn === true) {
