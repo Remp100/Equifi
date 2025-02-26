@@ -17,10 +17,15 @@ import {
   faSignOutAlt,
   faCalendarAlt,
   faSearch,
-  faUserCog,
+  // faUserCog,
   faExclamation,
   faCheck,
+  faExclamationTriangle,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import Slider from "react-slick";
 
 export default function DashboardWatchlist() {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
@@ -60,6 +65,7 @@ export default function DashboardWatchlist() {
   const [isAlertVisible, setIsAlertVisible] = useState(false);
   const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [apiError, setApiError] = useState(false);
 
   // Effect to check login status when component mounts
   useEffect(() => {
@@ -96,6 +102,7 @@ export default function DashboardWatchlist() {
       });
       localStorage.removeItem("isLoggedIn");
       setIsLoggedIn(false);
+      sessionStorage.clear();
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -112,7 +119,13 @@ export default function DashboardWatchlist() {
       const newApiUrl = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?apikey=${apiKey}`;
 
       fetch(newApiUrl)
-        .then((response) => response.json())
+        .then((response) => {
+          if (response.status === 429) {
+            setApiError(true); // API expired alert
+            throw new Error("API limit reached (429)");
+          }
+          return response.json();
+        })
         .then((data) => {
           const filteredData = data.filter((item) => {
             const date = new Date(item.date);
@@ -320,6 +333,22 @@ export default function DashboardWatchlist() {
       endDate: endDate,
     };
 
+    const isDuplicate = savedAssets.some(
+      (asset) =>
+        asset.assetSymbol === newAsset.assetSymbol &&
+        asset.interval === newAsset.interval &&
+        new Date(asset.startDate).toISOString() ===
+          new Date(newAsset.startDate).toISOString() &&
+        new Date(asset.endDate).toISOString() ===
+          new Date(newAsset.endDate).toISOString()
+    );
+
+    if (isDuplicate) {
+      setWarning("This asset with the same parameters is already saved.");
+      setIsAlertVisible(true);
+      return;
+    }
+
     axios
       .post(`${API_URL}/save-asset`, {
         email: email,
@@ -402,8 +431,9 @@ export default function DashboardWatchlist() {
       `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${apiKey}`
     )
       .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 429) {
+          setApiError(true);
+          throw new Error("API limit reached (429)");
         }
         return response.json();
       })
@@ -518,19 +548,36 @@ export default function DashboardWatchlist() {
   }, [searchBarRef]);
 
   // Function to delete saved asset from watchlist
-  const handleDeleteAsset = (assetSymbol) => {
+  const handleDeleteAsset = (asset) => {
+    const startDate = asset.startDate ? new Date(asset.startDate) : null;
+    const endDate = asset.endDate ? new Date(asset.endDate) : null;
+
+    if (!startDate || isNaN(startDate) || !endDate || isNaN(endDate)) {
+      console.error("Invalid date value:", asset.startDate, asset.endDate);
+      setWarning("Invalid date value.");
+      setIsAlertVisible(true);
+      return;
+    }
     axios
       .post(`${API_URL}/delete-saved-asset`, {
         email: email,
-        assetSymbol: assetSymbol,
+        assetSymbol: asset.assetSymbol,
+        interval: asset.interval,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       })
       .then((response) => {
         if (response.status === 200) {
           setSavedAssets((prevSavedAssets) =>
-            prevSavedAssets.filter((asset) => asset.assetSymbol !== assetSymbol)
+            prevSavedAssets.filter(
+              (a) =>
+                a.assetSymbol !== asset.assetSymbol ||
+                a.interval !== asset.interval ||
+                new Date(a.startDate).toISOString() !==
+                  startDate.toISOString() ||
+                new Date(a.endDate).toISOString() !== endDate.toISOString()
+            )
           );
-          setIsSuccessAlertVisible(true);
-          setAlertFadeOut(false);
         } else {
           setWarning("Failed to delete asset.");
           setIsAlertVisible(true);
@@ -641,6 +688,52 @@ export default function DashboardWatchlist() {
     return null;
   };
 
+  const renderApiError = () => {
+    if (apiError) {
+      return (
+        <div className="alert error">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+          API limit reached! Please wait or use a different API key.
+          <button
+            className="alert close-btn"
+            onClick={() => setApiError(false)}
+          >
+            X
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const sliderRef = useRef(null);
+
+  // Settings with arrows disabled - we'll add our own navigation
+  const settings = {
+    dots: true,
+    infinite: false,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    adaptiveHeight: true,
+    centerMode: savedAssets.length > 1,
+    centerPadding: savedAssets.length > 1 ? "10px" : "0",
+    arrows: false,
+  };
+
+  // Custom navigation functions
+  const goToNext = () => {
+    if (sliderRef.current) {
+      sliderRef.current.slickNext();
+    }
+  };
+
+  const goToPrev = () => {
+    if (sliderRef.current) {
+      sliderRef.current.slickPrev();
+    }
+  };
+
   return (
     <div className="dashboard">
       <div className="sidebar-watchlist">
@@ -667,22 +760,18 @@ export default function DashboardWatchlist() {
       <div className="main-content">
         <div className="alert-invest">{renderStatusMessage()}</div>
         <div className="alert-invest">{renderSuccessAlert()}</div>
+        <div className="alert-invest">{renderApiError()}</div>
         <div className="profile-dropdown-watchlist">
           <div className="nav-menu" ref={menuRef}>
             <div className="menu-trigger">
               <button className="avatar-button" onClick={() => setOpen(!open)}>
                 <div className="avatar-wrapper">
-                  {" "}
-                  {/* New wrapper div */}
                   <div className="avatar-placeholder">{initials}</div>
                 </div>
               </button>
             </div>
             <div className={`dropdown-menu ${open ? "active" : "inactive"}`}>
               <div className="account-info">
-                <div className="account-initial">
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
                 <div className="account-details">
                   <div className="full-name">
                     {firstName} {lastName}
@@ -694,10 +783,10 @@ export default function DashboardWatchlist() {
                   <FontAwesomeIcon icon={faUser} className="menu-icon" />
                   Profile
                 </Link>
-                <Link to="/dashboard/profile" className="dropdown-item">
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
                   <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
                   Settings
-                </Link>
+                </Link> */}
                 <div className="dropdown-item" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
                   Log out
@@ -819,53 +908,172 @@ export default function DashboardWatchlist() {
                 Save Asset
               </button>
             </div>
-            <div className="card saved-assets">
-              <h2>Saved Assets</h2>
+            <div
+              className="carousel-container"
+              style={{
+                maxWidth: "300px",
+                margin: "0 auto",
+                padding: "20px",
+                position: "relative",
+              }}
+            >
+              <h2 className="text-center" style={{ marginBottom: "20px" }}>
+                Saved Assets
+              </h2>
+              {savedAssets.length > 1 && (
+                <button
+                  onClick={goToPrev}
+                  style={{
+                    position: "absolute",
+                    left: "0px",
+                    top: "60%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    background: "rgba(255, 255, 255, 0.7)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    cursor: "pointer",
+                    color: "black",
+                    outline: "none",
+                  }}
+                  aria-label="Previous Slide"
+                >
+                  &lt;
+                </button>
+              )}
+
               {savedAssets.length > 0 ? (
-                <ul>
-                  {savedAssets.map((asset) => (
-                    <li key={asset.assetSymbol} className="saved-asset-item">
-                      <div className="asset-info">
-                        <strong>{asset.assetSymbol}</strong> - Interval:{" "}
-                        {asset.interval || "N/A"}
-                        <br />
-                        <span>
-                          Start:{" "}
-                          {asset.startDate
-                            ? new Date(asset.startDate).toLocaleDateString(
-                                "en-US"
-                              )
-                            : "N/A"}
-                        </span>{" "}
-                        |{" "}
-                        <span>
-                          End:{" "}
-                          {asset.endDate
-                            ? new Date(asset.endDate).toLocaleDateString(
-                                "en-US"
-                              )
-                            : "N/A"}
-                        </span>
-                      </div>
-                      <div className="asset-buttons">
-                        <button
-                          className="btn view-asset"
-                          onClick={() => handleAssetButtonClick(asset)}
+                <div style={{ margin: "0 30px" }}>
+                  <Slider ref={sliderRef} {...settings}>
+                    {savedAssets.map((asset, index) => (
+                      <div
+                        key={index}
+                        data-index={index}
+                        className="carousel-slide"
+                        style={{ padding: "10px" }}
+                      >
+                        <div
+                          className="asset-card"
+                          style={{
+                            border: "1px solid #ccc",
+                            borderRadius: "10px",
+                            padding: "15px",
+                            textAlign: "center",
+                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                            margin: "5px",
+                            position: "relative",
+                          }}
                         >
-                          View
-                        </button>
-                        <button
-                          className="btn delete-asset"
-                          onClick={() => handleDeleteAsset(asset.assetSymbol)}
-                        >
-                          X
-                        </button>
+                          {/* View Icon */}
+                          <FontAwesomeIcon
+                            icon={faEye}
+                            className="asset-view-icon"
+                            onClick={() => handleAssetButtonClick(asset)}
+                            style={{
+                              position: "absolute",
+                              top: "8px",
+                              left: "8px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          />
+
+                          {/* Asset Information */}
+                          <div
+                            className="asset-info"
+                            style={{
+                              marginBottom: "10px",
+                              marginTop: "10px",
+                            }}
+                          >
+                            <strong style={{ fontSize: "18px" }}>
+                              {asset.assetSymbol}
+                            </strong>
+                            <div>Interval: {asset.interval || "N/A"}</div>
+                            <div>
+                              Start:{" "}
+                              {asset.startDate
+                                ? new Date(asset.startDate).toLocaleDateString(
+                                    "en-US"
+                                  )
+                                : "N/A"}
+                            </div>
+                            <div>
+                              End:{" "}
+                              {asset.endDate
+                                ? new Date(asset.endDate).toLocaleDateString(
+                                    "en-US"
+                                  )
+                                : "N/A"}
+                            </div>
+                          </div>
+
+                          {/* Delete Icon */}
+                          <div
+                            className="asset-buttons"
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            <FontAwesomeIcon
+                              icon={faTimes}
+                              className="asset-delete-icon"
+                              onClick={() => handleDeleteAsset(asset)}
+                              style={{
+                                position: "absolute",
+                                top: "7px",
+                                right: "10px",
+                                fontSize: "14px",
+                                cursor: "pointer",
+                              }}
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                    ))}
+                  </Slider>
+                </div>
               ) : (
-                <p>No assets saved yet. Add some assets above!</p>
+                <p style={{ textAlign: "center", color: "#666" }}>
+                  No assets saved yet. Add some assets above!
+                </p>
+              )}
+
+              {/* Custom Next Button */}
+              {savedAssets.length > 1 && (
+                <button
+                  onClick={goToNext}
+                  style={{
+                    position: "absolute",
+                    right: "0px",
+                    top: "60%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    background: "rgba(255, 255, 255, 0.7)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    cursor: "pointer",
+                    color: "black",
+                    outline: "none",
+                  }}
+                  aria-label="Next Slide"
+                >
+                  &gt;
+                </button>
               )}
             </div>
           </div>

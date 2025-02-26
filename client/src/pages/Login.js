@@ -80,8 +80,7 @@ export default function Login() {
             <FontAwesomeIcon icon={faExclamation} className="mr-2" />
             <div className="alert-text">
               Admin approval rejected. Try again
-              <Link to="/rejection" className="link-retry">
-                {" "}
+              <Link to="/resubmit" className="link-retry">
                 here
               </Link>
             </div>

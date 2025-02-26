@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faExclamation,
   faCheckCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import "../Login.css";
+
+let isCooldown = false;
 
 export default function ForgotPassword() {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
@@ -16,37 +18,71 @@ export default function ForgotPassword() {
   const [isAlertVisible, setIsAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
-  const [alertType, setAlertType] = useState(""); // Track alert type (error or success)
+  const [alertType, setAlertType] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await response.json();
+        setIsLoggedIn(data.valid);
+      } catch (error) {
+        console.error("Error checking login status:", error);
+      }
+    };
+    checkLoginStatus();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn === true) {
+      navigate("/dashboard");
+    }
+  }, [isLoggedIn, navigate]);
 
   useEffect(() => {
     if (isAlertVisible) {
+      setAlertFadeOut(false);
       const timer = setTimeout(() => {
         setAlertFadeOut(true);
-        setTimeout(() => {
+        const fadeOutTimer = setTimeout(() => {
           setIsAlertVisible(false);
           setAlertFadeOut(false);
         }, 500);
+        return () => clearTimeout(fadeOutTimer);
       }, 5000);
       return () => clearTimeout(timer);
     }
   }, [isAlertVisible]);
 
+  const triggerAlert = (message, type) => {
+    setAlertMessage(message);
+    setAlertType(type);
+    setIsAlertVisible(true);
+    setAlertFadeOut(false);
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!email || !confirmEmail) {
-      setAlertMessage("Please enter an email in both fields!");
-      setAlertType("error");
-      setIsAlertVisible(true);
+      triggerAlert("Please enter an email in both fields!", "error");
       return;
     }
 
     if (email !== confirmEmail) {
-      setAlertMessage("Emails do not match!");
-      setAlertType("error"); // Set alert type to error
-      setIsAlertVisible(true);
+      triggerAlert("Emails do not match!", "error");
       return;
     }
+
+    // ✅ No more multiple emails - this will persist across all renders!
+    if (isCooldown) return;
+
+    isCooldown = true; // Start cooldown immediately to prevent multiple emails
 
     try {
       const response = await axios.post(`${API_URL}/forgot-password`, {
@@ -55,20 +91,22 @@ export default function ForgotPassword() {
 
       // Change this condition
       if (response.data.message) {
-        setAlertMessage(response.data.message);
-        setAlertType("success");
-        setIsAlertVisible(true);
+        triggerAlert(response.data.message, "success");
+
+        setTimeout(() => {
+          isCooldown = false; // Reset cooldown after timeout
+          navigate("/login"); // ✅ Redirect after success
+        }, 5000); // Cooldown period (matches the alert timeout)
       } else {
-        setAlertMessage("An error occurred.");
-        setAlertType("error");
-        setIsAlertVisible(true);
+        triggerAlert("An error occurred.", "error");
+        isCooldown = false; // Reset cooldown on error
       }
     } catch (error) {
-      setAlertMessage(
-        error.response?.data?.message || "An error occurred. Please try again."
+      triggerAlert(
+        error.response?.data?.message || "An error occurred. Please try again.",
+        "error"
       );
-      setAlertType("error");
-      setIsAlertVisible(true);
+      isCooldown = false; // Reset cooldown on error
     }
   };
 
@@ -91,7 +129,6 @@ export default function ForgotPassword() {
                 alertType === "error" ? "alert error" : "alert success"
               }`}
             >
-              {/* FontAwesome Icon and Alert Content */}
               <FontAwesomeIcon
                 icon={alertType === "error" ? faExclamation : faCheckCircle}
                 className="mr-2"

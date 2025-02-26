@@ -13,9 +13,11 @@ import {
   faFolder,
   faUser,
   faSignOutAlt,
-  faUserCog,
+  // faUserCog,
   faCheck,
   faExclamation,
+  faExclamationTriangle,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardPortfolios() {
@@ -43,6 +45,9 @@ export default function DashboardPortfolios() {
   const navigate = useNavigate();
   const [alert, setAlert] = useState({ type: "", message: "" });
   const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [apiError, setApiError] = useState(false);
+  const portfoliosPerPage = 3;
   const apiKey = process.env.REACT_APP_API_KEY;
 
   // Effect to check login status on component mount
@@ -271,17 +276,17 @@ export default function DashboardPortfolios() {
 
   // Function to fetch historical data from the API
   const fetchHistoricalData = async (symbol, interval, startDate, endDate) => {
-    let apiInterval = interval;
-    if (interval === "Daily") {
-      apiInterval = "4hour";
-    }
-
+    let apiInterval = interval === "Daily" ? "4hour" : interval;
     const formattedStartDate = new Date(startDate).toISOString().split("T")[0];
     const formattedEndDate = new Date(endDate).toISOString().split("T")[0];
     const url = `https://financialmodelingprep.com/api/v3/historical-chart/${apiInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
 
     try {
       const response = await fetch(url);
+      if (response.status === 429) {
+        setApiError(true);
+        throw new Error("API limit reached (429)");
+      }
       let data = await response.json();
 
       if (interval === "Daily") {
@@ -326,6 +331,18 @@ export default function DashboardPortfolios() {
     }
   };
 
+  // API Error Rendering
+  const renderApiError = () =>
+    apiError && (
+      <div className="alert error">
+        <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+        API limit reached! Please wait or use a different API key.
+        <button className="alert close-btn" onClick={() => setApiError(false)}>
+          <FontAwesomeIcon icon={faTimes} />
+        </button>
+      </div>
+    );
+
   // Function to calculate best outcome based on percentile
   const calculateBestOutcome = useCallback((percentile, returns) => {
     const sortedReturns = [...returns].sort((a, b) => a - b);
@@ -351,6 +368,9 @@ export default function DashboardPortfolios() {
   // Function to handle check button click
   const handleCheckButton = async (index) => {
     try {
+      // Check for API error before proceeding
+      if (apiError) return;
+
       const portfolio = portfolioData[index];
       const interval = portfolio.interval;
       const originalStartDate = portfolio.startDate;
@@ -362,15 +382,16 @@ export default function DashboardPortfolios() {
         );
       }
 
+      // Calculate new start and end dates
       const difference = calculateDateDifference(
         originalStartDate,
         originalEndDate
       );
-
       const today = new Date();
       const newEndDate = today.toISOString().split("T")[0];
       const newStartDate = calculateNewStartDate(newEndDate, difference);
 
+      // Get asset symbols and weights
       const symbols = [
         portfolio.asset1Name,
         portfolio.asset2Name,
@@ -387,23 +408,18 @@ export default function DashboardPortfolios() {
         .filter(Boolean)
         .map((weight) => weight / 100);
 
+      // Fetch historical data
       const dataPromises = symbols.map((symbol) =>
         fetchHistoricalData(symbol, interval, newStartDate, newEndDate)
       );
-
       const allData = await Promise.all(dataPromises);
 
       const returns = allData.map((data) => calculateReturns(data));
-
-      const meanReturns = returns.map((r) => {
-        const meanReturn = calculateMeanReturn(r);
-        return meanReturn;
-      });
-
+      const meanReturns = returns.map((r) => calculateMeanReturn(r));
       const volatilities = returns.map((r) => calculateStandardDeviation(r));
-
       const correlationMatrix = calculateCorrelationMatrix(returns);
 
+      // Calculate portfolio metrics
       const metrics = calculatePortfolioMetrics(
         weights,
         meanReturns,
@@ -411,19 +427,23 @@ export default function DashboardPortfolios() {
         correlationMatrix
       );
 
-      const expectedReturnDiff = (
-        metrics.return - parseFloat(portfolio.expectedReturn)
-      ).toFixed(2);
-      const bestOutcomeDiff = (
-        calculateBestOutcome(0.99, meanReturns) -
-        parseFloat(portfolio.bestOutcome)
-      ).toFixed(2);
+      // Validate metrics before updating differences
+      if (metrics?.return && !isNaN(metrics.return)) {
+        const expectedReturnDiff = (
+          metrics.return - parseFloat(portfolio.expectedReturn)
+        ).toFixed(2);
 
-      const updatedDifferences = differences.map((diff, i) =>
-        i === index ? { expectedReturnDiff, bestOutcomeDiff } : diff
-      );
+        const bestOutcome = calculateBestOutcome(0.99, meanReturns);
+        const bestOutcomeDiff = !isNaN(bestOutcome)
+          ? (bestOutcome - parseFloat(portfolio.bestOutcome)).toFixed(2)
+          : "0.00";
 
-      setDifferences(updatedDifferences);
+        const updatedDifferences = differences.map((diff, i) =>
+          i === index ? { expectedReturnDiff, bestOutcomeDiff } : diff
+        );
+
+        setDifferences(updatedDifferences);
+      }
     } catch (error) {
       console.error("Error in handleCheckButton: ", error);
     }
@@ -432,7 +452,9 @@ export default function DashboardPortfolios() {
   // Function to handle update button click
   const handleUpdateButton = async (index) => {
     try {
-      showAlert("success", "Portfolio updated successfully!");
+      // Check for API error before proceeding
+      if (apiError) return;
+
       const portfolio = portfolioData[index];
       const interval = portfolio.interval;
       const originalStartDate = portfolio.startDate;
@@ -444,15 +466,16 @@ export default function DashboardPortfolios() {
         );
       }
 
+      // Calculate new start and end dates
       const difference = calculateDateDifference(
         originalStartDate,
         originalEndDate
       );
-
       const today = new Date();
       const newEndDate = today.toISOString().split("T")[0];
       const newStartDate = calculateNewStartDate(newEndDate, difference);
 
+      // Get asset symbols and weights
       const symbols = [
         portfolio.asset1Name,
         portfolio.asset2Name,
@@ -469,23 +492,18 @@ export default function DashboardPortfolios() {
         .filter(Boolean)
         .map((weight) => weight / 100);
 
+      // Fetch historical data
       const dataPromises = symbols.map((symbol) =>
         fetchHistoricalData(symbol, interval, newStartDate, newEndDate)
       );
-
       const allData = await Promise.all(dataPromises);
 
       const returns = allData.map((data) => calculateReturns(data));
-
-      const meanReturns = returns.map((r) => {
-        const meanReturn = calculateMeanReturn(r);
-        return meanReturn;
-      });
-
+      const meanReturns = returns.map((r) => calculateMeanReturn(r));
       const volatilities = returns.map((r) => calculateStandardDeviation(r));
-
       const correlationMatrix = calculateCorrelationMatrix(returns);
 
+      // Calculate portfolio metrics
       const metrics = calculatePortfolioMetrics(
         weights,
         meanReturns,
@@ -493,31 +511,62 @@ export default function DashboardPortfolios() {
         correlationMatrix
       );
 
-      const updatedPortfolio = {
-        ...portfolio,
-        expectedReturn: metrics.return.toFixed(2),
-        bestOutcome: calculateBestOutcome(0.99, meanReturns).toFixed(2),
-        dateUpdated: new Date(),
-      };
+      // Validate metrics before updating state
+      if (metrics?.return && !isNaN(metrics.return)) {
+        const expectedReturn = metrics.return.toFixed(2);
+        const bestOutcome = !isNaN(calculateBestOutcome(0.99, meanReturns))
+          ? calculateBestOutcome(0.99, meanReturns).toFixed(2)
+          : portfolio.bestOutcome;
 
-      const updatedPortfolios = portfolioData.map((p, i) =>
-        i === index ? updatedPortfolio : p
-      );
-      setPortfolioData(updatedPortfolios);
-      const updatedDifferences = differences.map((diff, i) =>
-        i === index ? {} : diff
-      );
+        // Updated portfolio object
+        const updatedPortfolio = {
+          ...portfolio,
+          expectedReturn,
+          bestOutcome,
+          dateUpdated: new Date().toISOString(), // Ensure proper date format for backend
+        };
 
-      setDifferences(updatedDifferences);
+        // Send update request to backend
+        const response = await axios.post(`${API_URL}/update-portfolio`, {
+          email: email,
+          portfolioIndex: index,
+          updatedPortfolio: updatedPortfolio,
+        });
+
+        if (response.status === 200) {
+          // Update the portfolio state after successful backend update
+          const updatedPortfolios = portfolioData.map((p, i) =>
+            i === index ? updatedPortfolio : p
+          );
+          setPortfolioData(updatedPortfolios);
+
+          const updatedDifferences = differences.map((diff, i) =>
+            i === index ? {} : diff
+          );
+          setDifferences(updatedDifferences);
+
+          showAlert("success", "Portfolio updated successfully!");
+        } else {
+          showAlert("error", "Error updating portfolio.");
+        }
+      }
     } catch (error) {
-      console.error("Error in handleUpdateButton: ", error);
+      console.error("Error in handleUpdateButton:", error);
+      showAlert("error", "Failed to update portfolio.");
     }
   };
+
+  useEffect(() => {
+    if (apiError) {
+      const timer = setTimeout(() => setApiError(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [apiError]);
 
   // Function to handle delete button click
   const handleDeleteButton = async (index) => {
     try {
-      await axios.post(`${API_URL}/delete-portfolio`, {
+      await axios.post("http://localhost:3002/delete-portfolio", {
         email: email,
         portfolioIndex: index,
       });
@@ -536,11 +585,12 @@ export default function DashboardPortfolios() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get(`${API_URL}/logout`, {
+      await axios.get("http://localhost:3002/logout", {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");
       setIsLoggedIn(false);
+      sessionStorage.clear();
     } catch (error) {
       console.error("Error logging out:", error);
     }
@@ -850,6 +900,123 @@ export default function DashboardPortfolios() {
     );
   };
 
+  // Pagination Logic
+  const totalPages = Math.ceil(portfolioData.length / portfoliosPerPage);
+  const indexOfLastPortfolio = currentPage * portfoliosPerPage;
+  const indexOfFirstPortfolio = indexOfLastPortfolio - portfoliosPerPage;
+  const currentPortfolios = portfolioData.slice(
+    indexOfFirstPortfolio,
+    indexOfLastPortfolio
+  );
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const paginationButtons = [];
+
+    // Previous Page Button
+    paginationButtons.push(
+      <button
+        key="prev"
+        className={`pagination-button ${currentPage === 1 ? "disabled" : ""}`}
+        onClick={() => goToPage(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        {"<"} Previous Page
+      </button>
+    );
+
+    // Page Numbers (1, 2, ..., Last)
+    if (totalPages <= 3) {
+      for (let i = 1; i <= totalPages; i++) {
+        paginationButtons.push(
+          <button
+            key={i}
+            className={`pagination-button ${currentPage === i ? "active" : ""}`}
+            onClick={() => goToPage(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+    } else {
+      paginationButtons.push(
+        <button
+          key={1}
+          className={`pagination-button ${currentPage === 1 ? "active" : ""}`}
+          onClick={() => goToPage(1)}
+        >
+          1
+        </button>
+      );
+
+      if (currentPage > 3) {
+        paginationButtons.push(
+          <span key="ellipsis1" className="pagination-ellipsis">
+            ...
+          </span>
+        );
+      }
+
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = startPage; i <= endPage; i++) {
+        paginationButtons.push(
+          <button
+            key={i}
+            className={`pagination-button ${currentPage === i ? "active" : ""}`}
+            onClick={() => goToPage(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+
+      if (currentPage < totalPages - 2) {
+        paginationButtons.push(
+          <span key="ellipsis2" className="pagination-ellipsis">
+            ...
+          </span>
+        );
+      }
+
+      paginationButtons.push(
+        <button
+          key={totalPages}
+          className={`pagination-button ${
+            currentPage === totalPages ? "active" : ""
+          }`}
+          onClick={() => goToPage(totalPages)}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    // Next Page Button
+    paginationButtons.push(
+      <button
+        key="next"
+        className={`pagination-button ${
+          currentPage === totalPages ? "disabled" : ""
+        }`}
+        onClick={() => goToPage(currentPage + 1)}
+        disabled={currentPage === totalPages}
+      >
+        Next Page {">"}
+      </button>
+    );
+
+    return <div className="pagination-container">{paginationButtons}</div>;
+  };
+
   return (
     <div className="dashboard">
       <div className="sidebar">
@@ -879,17 +1046,12 @@ export default function DashboardPortfolios() {
             <div className="menu-trigger">
               <button className="avatar-button" onClick={() => setOpen(!open)}>
                 <div className="avatar-wrapper">
-                  {" "}
-                  {/* New wrapper div */}
                   <div className="avatar-placeholder">{initials}</div>
                 </div>
               </button>
             </div>
             <div className={`dropdown-menu ${open ? "active" : "inactive"}`}>
               <div className="account-info">
-                <div className="account-initial">
-                  {firstName.charAt(0).toUpperCase()}
-                </div>
                 <div className="account-details">
                   <div className="full-name">
                     {firstName} {lastName}
@@ -901,10 +1063,10 @@ export default function DashboardPortfolios() {
                   <FontAwesomeIcon icon={faUser} className="menu-icon" />
                   Profile
                 </Link>
-                <Link to="/dashboard/profile" className="dropdown-item">
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
                   <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
                   Settings
-                </Link>
+                </Link> */}
                 <div className="dropdown-item" onClick={handleLogout}>
                   <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
                   Log out
@@ -914,6 +1076,7 @@ export default function DashboardPortfolios() {
           </div>
         </div>
         <div className="alert-invest">{renderAlert()}</div>
+        <div className="alert-invest">{renderApiError()}</div>
         <div className="portfolios-container">
           {portfolioData.length > 0 ? (
             <div className="portfolio-data">
@@ -932,7 +1095,7 @@ export default function DashboardPortfolios() {
                     </tr>
                   </thead>
                   <tbody>
-                    {portfolioData.map((portfolio, index) => (
+                    {currentPortfolios.map((portfolio, index) => (
                       <tr key={index}>
                         <td>{index + 1}</td>
                         <td>
@@ -1033,7 +1196,7 @@ export default function DashboardPortfolios() {
                             className="btn-action update"
                             onClick={() => handleUpdateButton(index)}
                           >
-                            <i className="icon">✏️</i> Edit
+                            <i className="icon">🔄</i> Update
                           </button>
                           <button
                             className="btn-action delete"
@@ -1047,6 +1210,7 @@ export default function DashboardPortfolios() {
                   </tbody>
                 </table>
               </div>
+              {renderPagination()}
             </div>
           ) : (
             <div className="warning-container">

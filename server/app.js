@@ -107,6 +107,7 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 // Start the server
+// Start the server
 app.listen(3002, () => {
   console.log("Server is running on port 3002");
 });
@@ -454,16 +455,23 @@ app.post("/login", async (req, res) => {
       .collection("users")
       .findOne({ email: sentLoginEmail });
 
+    // Check if user exists
     if (!user) {
       return res.send({ message: "Credentials error", isLoggedIn: false });
     }
 
-    // Check if the user has verified their email
+    // Compare passwords FIRST
+    const match = await bcrypt.compare(setLoginPassword, user.password);
+    if (!match) {
+      return res.send({ message: "Credentials error", isLoggedIn: false });
+    }
+
+    // If password matches, proceed with email verification check
     if (!user.emailVerified) {
       return res.send({ message: "Email not verified", isLoggedIn: false });
     }
 
-    // Check if the user has been rejected by the admin
+    // Check admin approval
     if (user.adminVerified === "Rejected") {
       return res.send({
         message: "Admin approval rejected",
@@ -471,30 +479,19 @@ app.post("/login", async (req, res) => {
       });
     }
 
-    // Check if the user is approved by the admin
     if (user.adminVerified !== "Accepted") {
       return res.send({ message: "Admin approval pending", isLoggedIn: false });
     }
 
-    // Compare passwords
-    const match = await bcrypt.compare(setLoginPassword, user.password);
-
-    if (match) {
-      // Set session variable
-      req.session.LoginEmail = user.email;
-      console.log(req.session.LoginEmail);
-
-      // Send response
-      res.send({
-        results: user,
-        email: user.email,
-        isLoggedIn: true,
-        isVerified: user.emailVerified,
-        isAdminApproved: user.adminVerified === "Accepted",
-      });
-    } else {
-      res.send({ message: "Credentials error", isLoggedIn: false });
-    }
+    // If all checks pass, set session and send response
+    req.session.LoginEmail = user.email;
+    res.send({
+      results: user,
+      email: user.email,
+      isLoggedIn: true,
+      isVerified: user.emailVerified,
+      isAdminApproved: user.adminVerified === "Accepted",
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -547,7 +544,7 @@ app.post("/save-asset", async (req, res) => {
   const { email, assetSymbol, interval, startDate, endDate } = req.body;
 
   try {
-    // Format dates as ISO strings
+    // Format dates as ISO strings for consistency
     const asset = {
       assetSymbol,
       interval,
@@ -561,16 +558,24 @@ app.post("/save-asset", async (req, res) => {
       .collection("users")
       .findOne({ email });
 
-    // Check if the asset is already saved
+    // Check if the asset already exists with the same properties
     if (
       user &&
       user.savedAssets &&
-      user.savedAssets.some((a) => a.assetSymbol === assetSymbol)
+      user.savedAssets.some(
+        (a) =>
+          a.assetSymbol === assetSymbol &&
+          a.startDate === asset.startDate &&
+          a.endDate === asset.endDate &&
+          a.interval === asset.interval
+      )
     ) {
-      return res.status(400).json({ message: "Asset is already saved." });
+      return res
+        .status(400)
+        .json({ message: "Asset with the same settings is already saved." });
     }
 
-    // Add the new asset
+    // Save the new asset
     await client
       .db("portfolio_login_db")
       .collection("users")
@@ -580,10 +585,10 @@ app.post("/save-asset", async (req, res) => {
         { upsert: true }
       );
 
-    console.log("Asset saved successfully");
+    console.log("✅ Asset saved successfully");
     res.sendStatus(200);
   } catch (error) {
-    console.error("Error saving asset:", error.message);
+    console.error("❌ Error saving asset:", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -700,6 +705,39 @@ app.post("/get-portfolio-data", async (req, res) => {
   }
 });
 
+// Endpoint for updating a portfolio
+app.post("/update-portfolio", async (req, res) => {
+  const { email, portfolioIndex, updatedPortfolio } = req.body;
+
+  try {
+    // Find the user in the database
+    const user = await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .findOne({ email: email });
+
+    if (!user || !user.Portfolios || user.Portfolios.length <= portfolioIndex) {
+      return res.status(404).json({ message: "Portfolio not found" });
+    }
+
+    // Update the specific portfolio at the given index
+    const updatedPortfolios = [...user.Portfolios];
+    updatedPortfolios[portfolioIndex] = updatedPortfolio;
+
+    // Save the updated portfolios back to the database
+    await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .updateOne({ email: email }, { $set: { Portfolios: updatedPortfolios } });
+
+    console.log(`Portfolio at index ${portfolioIndex} updated successfully`);
+    res.status(200).json({ message: "Portfolio updated successfully" });
+  } catch (error) {
+    console.error("Error updating portfolio:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Endpoint for deleting a portfolio
 app.post("/delete-portfolio", async (req, res) => {
   const { email, portfolioIndex } = req.body;
@@ -735,19 +773,23 @@ app.post("/delete-portfolio", async (req, res) => {
 
 // Route for deleting a saved asset from a user's account
 app.post("/delete-saved-asset", async (req, res) => {
-  const { email, assetSymbol } = req.body;
+  const { email, assetSymbol, interval, startDate, endDate } = req.body;
 
   try {
-    // Find the user in the database
     const user = await client
       .db("portfolio_login_db")
       .collection("users")
       .findOne({ email: email });
 
-    // Check if the asset exists
     if (user && user.savedAssets) {
       const existingAsset = user.savedAssets.find(
-        (asset) => asset.assetSymbol === assetSymbol
+        (asset) =>
+          asset.assetSymbol === assetSymbol &&
+          asset.interval === interval &&
+          new Date(asset.startDate).toISOString() ===
+            new Date(startDate).toISOString() &&
+          new Date(asset.endDate).toISOString() ===
+            new Date(endDate).toISOString()
       );
 
       if (!existingAsset) {
@@ -756,13 +798,22 @@ app.post("/delete-saved-asset", async (req, res) => {
           .json({ message: "Asset not found in saved assets." });
       }
 
-      // Remove the specific asset object
+      // Updated $pull to include all fields
       await client
         .db("portfolio_login_db")
         .collection("users")
         .updateOne(
           { email: email },
-          { $pull: { savedAssets: { assetSymbol: assetSymbol } } } // Remove matching object
+          {
+            $pull: {
+              savedAssets: {
+                assetSymbol: assetSymbol,
+                interval: interval,
+                startDate: new Date(startDate).toISOString(),
+                endDate: new Date(endDate).toISOString(),
+              },
+            },
+          }
         );
 
       console.log("Asset deleted successfully");
@@ -780,7 +831,18 @@ app.post("/delete-saved-asset", async (req, res) => {
 app.post("/save-data-profile", async (req, res) => {
   const {
     email,
-    userData: { firstName, lastName, country, pronoun },
+    userData: {
+      firstName,
+      lastName,
+      pronoun,
+      country,
+      city,
+      state,
+      zipCode,
+      street,
+      number,
+      phoneNumber,
+    },
   } = req.body;
 
   try {
@@ -797,15 +859,21 @@ app.post("/save-data-profile", async (req, res) => {
           $set: {
             firstName: firstName,
             lastName: lastName,
-            country: country,
             pronoun: pronoun,
+            country: country,
+            city: city,
+            state: state,
+            zipCode: zipCode,
+            street: street,
+            number: number,
+            phoneNumber: phoneNumber,
           },
         },
-        { upsert: true }
+        { upsert: true, returnDocument: "after" }
       );
 
-    console.log("Profile updated/created for", email);
-    res.sendStatus(200);
+    console.log("Profile updated/created for", email, result.value);
+    res.status(200).json({ success: true, updatedProfile: result.value });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -916,7 +984,7 @@ app.get("/verify-reset/:token", (req, res) => {
   }
 });
 
-app.post("/change-password", async (req, res) => {
+app.post("/reset-password", async (req, res) => {
   const { password, token } = req.body;
 
   try {
@@ -941,5 +1009,47 @@ app.post("/change-password", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Invalid or expired token." });
+  }
+});
+
+app.post("/change-password", async (req, res) => {
+  const { email, currentPassword, newPassword } = req.body;
+
+  try {
+    // Fetch user from database
+    const user = await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .findOne({ email });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." });
+    }
+
+    // Check if current password is correct
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Incorrect current password." });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await client
+      .db("portfolio_login_db")
+      .collection("users")
+      .updateOne({ email }, { $set: { password: hashedPassword } });
+
+    res
+      .status(200)
+      .json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ success: false, message: "Something went wrong." });
   }
 });

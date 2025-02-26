@@ -27,7 +27,30 @@ export default function ResubmitData() {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [fileName, setFileName] = useState("No file chosen");
   const [alert, setAlert] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await response.json();
+        setIsLoggedIn(data.valid);
+      } catch (error) {
+        console.error("Error checking login status:", error);
+      }
+    };
+    checkLoginStatus();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn === true) {
+      navigate("/dashboard");
+    }
+  }, [isLoggedIn, navigate]);
 
   // Function to trim the file name if too long
   const truncateFileName = (name, maxLength = 14) => {
@@ -85,7 +108,7 @@ export default function ResubmitData() {
     const email = localStorage.getItem("userEmail"); // adjust as needed
     if (email) {
       axios
-        .post(`${API_URL}//get-profile-data`, { email })
+        .post(`${API_URL}/get-profile-data`, { email })
         .then((response) => {
           const data = response.data;
           setUserData({
@@ -112,28 +135,38 @@ export default function ResubmitData() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setUserData({ ...userData, CIPhoto: file });
-      setFileName(truncateFileName(file.name));
+      if (!file.type.startsWith("image/")) {
+        setUserData({ ...userData, CIPhoto: null });
+        setFileName("No file chosen");
+      } else {
+        setUserData({ ...userData, CIPhoto: file });
+        setFileName(truncateFileName(file.name));
+      }
     }
   };
 
   const handleNextStep = () => {
+    if (
+      !userData.firstName ||
+      !/^(?!.*[-'’]{2})[A-Za-zÀ-ÖØ-öø-ÿ\s-'’]{1,50}$/.test(userData.firstName)
+    ) {
+      setAlert({ type: "warning", message: "Invalid First name." });
+      return;
+    }
+    // Validate last name
+    if (
+      !userData.lastName ||
+      !/^(?!.*[-'’]{2})[A-Za-zÀ-ÖØ-öø-ÿ\s-'’]{1,50}$/.test(userData.lastName)
+    ) {
+      setAlert({ type: "warning", message: "Invalid Last name." });
+      return;
+    }
     if (!userData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userData.email)) {
       setAlert({ type: "warning", message: "Please enter a valid email." });
       return;
     }
     if (userData.email !== confirmEmail) {
       setAlert({ type: "warning", message: "Emails do not match." });
-      return;
-    }
-    // Then, check email fields
-    if (!userData.firstName || !/^[\p{L}\s'-]+$/u.test(userData.firstName)) {
-      setAlert({ type: "warning", message: "Invalid First name." });
-      return;
-    }
-    // Validate last name
-    if (!userData.lastName || !/^[\p{L}\s'-]+$/u.test(userData.lastName)) {
-      setAlert({ type: "warning", message: "Invalid Last name." });
       return;
     }
     // Then, check phone number (only digits)
@@ -250,25 +283,6 @@ export default function ResubmitData() {
             <>
               <h1>Update Your Data</h1>
               <form>
-                {/* Email Fields first */}
-                <div className="input-box">
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={userData.email}
-                    onChange={(e) =>
-                      setUserData({ ...userData, email: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="input-box">
-                  <input
-                    type="email"
-                    placeholder="Confirm Email"
-                    value={confirmEmail}
-                    onChange={(e) => setConfirmEmail(e.target.value)}
-                  />
-                </div>
                 {/* Then Name Fields */}
                 <div className="input-box">
                   <input
@@ -288,6 +302,24 @@ export default function ResubmitData() {
                     onChange={(e) =>
                       setUserData({ ...userData, lastName: e.target.value })
                     }
+                  />
+                </div>
+                <div className="input-box">
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={userData.email}
+                    onChange={(e) =>
+                      setUserData({ ...userData, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="input-box">
+                  <input
+                    type="email"
+                    placeholder="Confirm Email"
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
                   />
                 </div>
                 {/* Then Phone Number */}

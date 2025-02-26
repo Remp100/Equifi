@@ -28,8 +28,40 @@ export default function Register() {
   const [CIPhoto, setCIPhoto] = useState(null);
   const [fileName, setFileName] = useState("No file chosen");
   const [alert, setAlert] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
-  const navigateTo = useNavigate();
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch(`${API_URL}/`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await response.json();
+        setIsLoggedIn(data.valid);
+      } catch (error) {
+        console.error("Error checking login status:", error);
+      }
+    };
+    checkLoginStatus();
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn === true) {
+      navigate("/dashboard");
+    }
+  }, [isLoggedIn, navigate]);
+
+  useEffect(() => {
+    if (alert) {
+      const timer = setTimeout(() => {
+        handleCloseWithFade(); // Use fade-out animation
+      }, 5000); // 5000 ms (5 seconds)
+      return () => clearTimeout(timer); // Cleanup on unmount or alert change
+    }
+  }, [alert]);
 
   useEffect(() => {
     if (alert) {
@@ -77,6 +109,26 @@ export default function Register() {
   // Function to handle user registration
   const handleNextStep = () => {
     if (step === 1) {
+      if (
+        !firstName ||
+        !/^(?!.*[-'’]{2})[A-Za-zÀ-ÖØ-öø-ÿ\s-'’]{1,50}$/.test(firstName)
+      ) {
+        setAlert({
+          type: "warning",
+          message: "Invalid First name.",
+        });
+        return;
+      }
+      if (
+        !lastName ||
+        !/^(?!.*[-'’]{2})[A-Za-zÀ-ÖØ-öø-ÿ\s-'’]{1,50}$/.test(lastName)
+      ) {
+        setAlert({
+          type: "warning",
+          message: "Invalid Last name.",
+        });
+        return;
+      }
       if (email.trim() === "" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setAlert({ type: "warning", message: "Please enter a valid email." });
         return;
@@ -94,20 +146,6 @@ export default function Register() {
       }
       if (password !== confirmPassword) {
         setAlert({ type: "warning", message: "Passwords do not match." });
-        return;
-      }
-      if (!firstName || !/^[\p{L}\s'-]+$/u.test(firstName)) {
-        setAlert({
-          type: "warning",
-          message: "Invalid First name.",
-        });
-        return;
-      }
-      if (!lastName || !/^[\p{L}\s'-]+$/u.test(lastName)) {
-        setAlert({
-          type: "warning",
-          message: "Invalid Last name.",
-        });
         return;
       }
       if (phoneNumber.trim() === "" || !/^\d+$/.test(phoneNumber)) {
@@ -131,6 +169,11 @@ export default function Register() {
 
   const handleRegister = (event) => {
     event.preventDefault();
+
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     if (!country || !/^[\p{L}\s'-]+$/u.test(country)) {
       setAlert({
         type: "warning",
@@ -199,7 +242,7 @@ export default function Register() {
           // Show success alert with check icon
           setAlert({ type: "success", message: "Registration successful!" });
           // Redirect to Log in page after 3 seconds
-          setTimeout(() => navigateTo("/login"), 4000);
+          setTimeout(() => navigate("/login"), 4000);
         } else {
           setAlert({ type: "error", message: "Email is already registered." });
         }
@@ -234,6 +277,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="First Name"
+                    value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                   />
                 </div>
@@ -241,6 +285,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Last Name"
+                    value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                   />
                 </div>
@@ -248,6 +293,7 @@ export default function Register() {
                   <input
                     type="email"
                     placeholder="Email"
+                    value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
@@ -255,6 +301,7 @@ export default function Register() {
                   <input
                     type="email"
                     placeholder="Confirm Email"
+                    value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
                   />
                 </div>
@@ -262,6 +309,7 @@ export default function Register() {
                   <input
                     type="password"
                     placeholder="Password"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
@@ -269,6 +317,7 @@ export default function Register() {
                   <input
                     type="password"
                     placeholder="Confirm Password"
+                    value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                 </div>
@@ -276,6 +325,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Phone Number"
+                    value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                   />
                 </div>
@@ -286,6 +336,7 @@ export default function Register() {
                       type="radio"
                       name="pronoun"
                       value="Mr"
+                      checked={pronoun === "Mr"}
                       onChange={(event) => {
                         setPronoun(event.target.value);
                       }}
@@ -297,6 +348,7 @@ export default function Register() {
                       type="radio"
                       name="pronoun"
                       value="Mrs"
+                      checked={pronoun === "Mrs"}
                       onChange={(event) => {
                         setPronoun(event.target.value);
                       }}
@@ -327,6 +379,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Country"
+                    value={country}
                     onChange={(e) => setCountry(e.target.value)}
                   />
                 </div>
@@ -334,6 +387,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="City"
+                    value={city}
                     onChange={(e) => setCity(e.target.value)}
                   />
                 </div>
@@ -341,6 +395,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="State/Province"
+                    value={state}
                     onChange={(e) => setState(e.target.value)}
                   />
                 </div>
@@ -348,6 +403,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Zip/Postal Code"
+                    value={zipCode}
                     onChange={(e) => setZipCode(e.target.value)}
                   />
                 </div>
@@ -355,6 +411,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Street"
+                    value={street}
                     onChange={(e) => setStreet(e.target.value)}
                   />
                 </div>
@@ -362,6 +419,7 @@ export default function Register() {
                   <input
                     type="text"
                     placeholder="Number"
+                    value={number}
                     onChange={(e) => setNumber(e.target.value)}
                   />
                 </div>

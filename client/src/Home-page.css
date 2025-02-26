@@ -26,6 +26,7 @@
 
 .welcome-buttons {
   display: flex;
+  gap: 30px;
 }
 
 .welcome-buttons .login-btn,

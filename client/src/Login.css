@@ -215,7 +215,7 @@
 
 .link-retry {
   text-decoration: none;
-  color: #721c24;
+  color: #1b6ec2;
 }
 
 .link-retry:hover {
@@ -234,4 +234,8 @@
 
 .page-title-reset-password {
   text-align: center;
+}
+
+.login input::placeholder {
+  color: #cfcfcf !important;
 }
