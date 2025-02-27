@@ -38,12 +38,11 @@ if (
 
 // Middleware setup
 app.use(express.json());
-const SERVER_URL = process.env.SERVER_URL || "https://equifi.onrender.com";
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://equifi.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://equifi.onrender.com";
 
 app.use(
   cors({
-    origin: SERVER_URL,
+    origin: FRONTEND_URL,
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
