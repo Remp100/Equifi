@@ -54,8 +54,8 @@ export default function DashboardWatchlist() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [interval, setInterval] = useState("Interval");
-  const apiKey = process.env.REACT_APP_API_KEY;
-  const searchApiUrl = `https://financialmodelingprep.com/api/v3/stock/list?apikey=${apiKey}`;
+  const financeApiKey = process.env.FINANCE_API_KEY;
+  const searchApiUrl = `https://financialmodelingprep.com/api/v3/stock/list?apikey=${financeApiKey}`;
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const [firstName, setFirstName] = useState("");
@@ -116,7 +116,7 @@ export default function DashboardWatchlist() {
       }
 
       const fetchInterval = interval === "Daily" ? "4hour" : interval;
-      const newApiUrl = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?apikey=${apiKey}`;
+      const newApiUrl = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?apikey=${financeApiKey}`;
 
       fetch(newApiUrl)
         .then((response) => {
@@ -147,7 +147,7 @@ export default function DashboardWatchlist() {
           setAlertFadeOut(false);
         });
     },
-    [interval, startDate, endDate, apiKey]
+    [interval, startDate, endDate, financeApiKey]
   );
 
   // Effect to search for the company and get asset symbol
@@ -428,7 +428,7 @@ export default function DashboardWatchlist() {
   // Function to fetch asset suggestions based on user input
   const fetchSuggestions = (input) => {
     fetch(
-      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${apiKey}`
+      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`
     )
       .then((response) => {
         if (response.status === 429) {
@@ -449,7 +449,7 @@ export default function DashboardWatchlist() {
 
         const profilePromises = data.map((item) =>
           fetch(
-            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${apiKey}`
+            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`
           )
             .then((response) => response.json())
             .then((profileData) => ({

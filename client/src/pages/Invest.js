@@ -26,7 +26,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const CACHE_KEY = "dashboardInvestCache";
-const apiKey = process.env.REACT_APP_API_KEY;
+const financeApiKey = process.env.FINANCE_API_KEY;
 
 export default function DashboardInvest() {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
@@ -246,7 +246,7 @@ export default function DashboardInvest() {
     }
 
     fetch(
-      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${apiKey}`
+      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`
     )
       .then((response) => {
         if (response.status === 429) {
@@ -266,7 +266,7 @@ export default function DashboardInvest() {
 
         const profilePromises = data.map((item) =>
           fetch(
-            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${apiKey}`
+            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`
           )
             .then((response) => response.json())
             .then((profileData) => ({
@@ -656,7 +656,7 @@ export default function DashboardInvest() {
             return Promise.resolve([]);
           }
 
-          const url = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
+          const url = `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${financeApiKey}`;
 
           return fetch(url)
             .then((response) => {
@@ -996,8 +996,8 @@ export default function DashboardInvest() {
       // If cached rate doesn't exist, fetch the first risk-free rate data point
       async function fetchRiskFreeRate() {
         // Define API key and URL for fetching risk-free rate data
-        const apiKey = "M4H1P0NX0B015FR8";
-        const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${apiKey}`;
+        const riskFreeApiKey = process.env.RISK_FREE_API_KEY;
+        const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${riskFreeApiKey}`;
 
         try {
           // Fetch data from the API
@@ -1964,16 +1964,19 @@ export default function DashboardInvest() {
 
   // Automatically hide success alert after 5 seconds
   useEffect(() => {
-    if (isSuccessAlertVisible) {
+    if (isSuccessAlertVisible || isAlertVisible) {
       const timer = setTimeout(() => {
-        setAlertFadeOut(true); // Trigger fade-out animation after 5 seconds
+        setAlertFadeOut(true);
         setTimeout(() => {
-          setIsSuccessAlertVisible(false); // Hide the success alert completely after animation completes
-        }, 500); // Wait for animation duration before hiding
-      }, 5000); // Start the fade-out process after 5 seconds
-      return () => clearTimeout(timer); // Cleanup timer on unmount or state change
+          setIsSuccessAlertVisible(false);
+          setIsAlertVisible(false);
+          setAlertFadeOut(false); // Reset fade-out
+        }, 500);
+      }, 5000); // Wait 5s before fading out
+
+      return () => clearTimeout(timer); // Cleanup
     }
-  }, [isSuccessAlertVisible]);
+  }, [isSuccessAlertVisible, isAlertVisible]);
 
   // Render success alert after a successful action like saving portfolio
   const renderSuccessAlert = () => {
@@ -1999,6 +2002,7 @@ export default function DashboardInvest() {
 
     setTimeout(() => {
       setIsAlertVisible(false); // Hide the alert completely
+      setIsSuccessAlertVisible(false);
       setAlertFadeOut(false); // Reset fade-out animation
     }, 500); // Matches fade-out duration (500ms)
   };
@@ -2032,7 +2036,7 @@ export default function DashboardInvest() {
       console.log(`❌ No cache found for ${symbol}, making API call...`);
       try {
         const response = await fetch(
-          `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${apiKey}`
+          `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${financeApiKey}`
         );
 
         const data = await response.json();

@@ -48,7 +48,7 @@ export default function DashboardPortfolios() {
   const [currentPage, setCurrentPage] = useState(1);
   const [apiError, setApiError] = useState(false);
   const portfoliosPerPage = 3;
-  const apiKey = process.env.REACT_APP_API_KEY;
+  const financeApiKey = process.env.FINANCE_API_KEY;
 
   // Effect to check login status on component mount
   useEffect(() => {
@@ -160,8 +160,8 @@ export default function DashboardPortfolios() {
       if (cachedRate) {
         setRiskFreeRate(parseFloat(cachedRate));
       } else {
-        const apiKey = "M4H1P0NX0B015FR8";
-        const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${apiKey}`;
+        const riskFreeApiKey = process.env.RISK_FREE_API_KEY;
+        const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${riskFreeApiKey}`;
         try {
           const response = await fetch(url);
           const data = await response.json();
@@ -279,7 +279,7 @@ export default function DashboardPortfolios() {
     let apiInterval = interval === "Daily" ? "4hour" : interval;
     const formattedStartDate = new Date(startDate).toISOString().split("T")[0];
     const formattedEndDate = new Date(endDate).toISOString().split("T")[0];
-    const url = `https://financialmodelingprep.com/api/v3/historical-chart/${apiInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${apiKey}`;
+    const url = `https://financialmodelingprep.com/api/v3/historical-chart/${apiInterval}/${symbol}?from=${formattedStartDate}&to=${formattedEndDate}&apikey=${financeApiKey}`;
 
     try {
       const response = await fetch(url);
@@ -572,13 +572,26 @@ export default function DashboardPortfolios() {
       });
 
       showAlert("warning", "Portfolio deleted successfully!");
-      const updatedPortfolios = portfolioData.filter((_, i) => i !== index);
-      const updatedDifferences = differences.filter((_, i) => i !== index);
 
+      // Remove deleted portfolio from state
+      const updatedPortfolios = portfolioData.filter((_, i) => i !== index);
       setPortfolioData(updatedPortfolios);
+
+      // Remove differences tracking for the deleted portfolio
+      const updatedDifferences = differences.filter((_, i) => i !== index);
       setDifferences(updatedDifferences);
+
+      // Adjust pagination if the current page is now empty
+      const totalPagesAfterDeletion = Math.ceil(
+        updatedPortfolios.length / portfoliosPerPage
+      );
+
+      if (currentPage > totalPagesAfterDeletion) {
+        setCurrentPage(Math.max(1, totalPagesAfterDeletion)); // Move to the last valid page
+      }
     } catch (error) {
       console.error("Error in handleDeleteButton: ", error);
+      showAlert("error", "Failed to delete portfolio.");
     }
   };
 
