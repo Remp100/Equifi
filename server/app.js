@@ -38,11 +38,12 @@ if (
 
 // Middleware setup
 app.use(express.json());
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://equifi.onrender.com";
+const SERVER_URL = process.env.SERVER_URL || "https://equifi.onrender.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://equifi.com";
 
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: SERVER_URL,
     methods: ["POST", "GET", "PUT", "DELETE"],
     credentials: true,
   })
@@ -212,7 +213,7 @@ function sendVerificationEmail(email, token) {
     from: EMAIL_USER,
     to: email,
     subject: "Email Verification",
-    html: `<p>Click <a href="http://localhost:3000/verify/${token}">here</a> to verify your email address.</p>`,
+    html: `<p>Click <a href="${FRONTEND_URL}/verify/${token}">here</a> to verify your email address.</p>`,
   };
 
   // Function to send the verification email
@@ -358,7 +359,7 @@ function sendRejectionEmail(email, rejectionReason) {
   });
 
   // Link to the resubmit page (update URL if needed)
-  const resubmitLink = "http://localhost:3000/resubmit";
+  const resubmitLink = `${FRONTEND_URL}/resubmit`;
 
   const mailOptions = {
     from: "equifisupp@gmail.com",
@@ -933,7 +934,7 @@ app.post("/forgot-password", async (req, res) => {
       );
 
     // Send password reset email
-    const resetLink = `http://localhost:3000/forgotpasswordchange/${resetToken}`;
+    const resetLink = `${FRONTEND_URL}/forgotpasswordchange/${resetToken}`;
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,

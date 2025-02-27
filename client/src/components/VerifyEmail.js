@@ -3,11 +3,13 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 
 const EmailVerify = () => {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const { token } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`http://localhost:3002/verify/${token}`).catch((error) => {
+    axios.get(`${API_URL}/verify/${token}`).catch((error) => {
       console.error("Verification error:", error.response?.data || error);
       // Redirect to your invalid page (assuming your 404 route is '/404')
       navigate("/404");
