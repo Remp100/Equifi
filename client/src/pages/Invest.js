@@ -26,7 +26,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 const CACHE_KEY = "dashboardInvestCache";
-const financeApiKey = process.env.FINANCE_API_KEY;
+const financeApiKey = process.env.REACT_APP_FINANCE_API_KEY;
 
 export default function DashboardInvest() {
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
@@ -996,7 +996,7 @@ export default function DashboardInvest() {
       // If cached rate doesn't exist, fetch the first risk-free rate data point
       async function fetchRiskFreeRate() {
         // Define API key and URL for fetching risk-free rate data
-        const riskFreeApiKey = process.env.RISK_FREE_API_KEY;
+        const riskFreeApiKey = process.env.REACT_APP_RISK_FREE_API_KEY;
         const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${riskFreeApiKey}`;
 
         try {

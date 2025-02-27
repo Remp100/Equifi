@@ -54,7 +54,7 @@ export default function DashboardWatchlist() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [interval, setInterval] = useState("Interval");
-  const financeApiKey = process.env.FINANCE_API_KEY;
+  const financeApiKey = process.env.REACT_APP_FINANCE_API_KEY;
   const searchApiUrl = `https://financialmodelingprep.com/api/v3/stock/list?apikey=${financeApiKey}`;
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);

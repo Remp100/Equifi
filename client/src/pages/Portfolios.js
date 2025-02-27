@@ -48,7 +48,7 @@ export default function DashboardPortfolios() {
   const [currentPage, setCurrentPage] = useState(1);
   const [apiError, setApiError] = useState(false);
   const portfoliosPerPage = 3;
-  const financeApiKey = process.env.FINANCE_API_KEY;
+  const financeApiKey = process.env.REACT_APP_FINANCE_API_KEY;
 
   // Effect to check login status on component mount
   useEffect(() => {
@@ -160,7 +160,7 @@ export default function DashboardPortfolios() {
       if (cachedRate) {
         setRiskFreeRate(parseFloat(cachedRate));
       } else {
-        const riskFreeApiKey = process.env.RISK_FREE_API_KEY;
+        const riskFreeApiKey = process.env.REACT_APP_RISK_FREE_API_KEY;
         const url = `https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=monthly&maturity=3month&apikey=${riskFreeApiKey}`;
         try {
           const response = await fetch(url);

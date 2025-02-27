@@ -1,2 +1,0 @@
-If the succes alert triggers once, any other alert will not trigger until a refresh on Invest page.
-If the portfolio is placed on the last paginatory and delete it, the paginatory will not move to the previous page.
