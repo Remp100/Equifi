@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "../Dashboard.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -13,9 +13,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardProfile() {
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
-
-  // State variables
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [email, setEmail] = useState("");
   const [profileData, setProfileData] = useState({
@@ -53,45 +50,47 @@ export default function DashboardProfile() {
   const navigate = useNavigate();
 
   // Function to fetch profile data for the given email
-  const fetchProfileData = useCallback(
-    async (email) => {
-      try {
-        const response = await axios.post(`${API_URL}/get-profile-data`, {
-          email,
-        });
-        if (response.status === 200) {
-          const data = response.data;
-          console.log("Fetched profile data:", data);
-          setProfileData(data);
-          setInputValues({
-            firstName: data.firstName || "",
-            lastName: data.lastName || "",
-            pronoun: data.pronoun || "",
-            country: data.country || "",
-            city: data.city || "",
-            state: data.state || "",
-            zipCode: data.zipCode || "",
-            street: data.street || "",
-            number: data.number || "",
-            phoneNumber: data.phoneNumber || "",
-          });
-          setSelectedPronoun(data.pronoun || "");
-        }
-      } catch (error) {
-        console.error("Error fetching profile data:", error.message);
-      }
-    },
-    [API_URL]
-  );
+  const fetchProfileData = async (email) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:3002/get-profile-data",
+        { email }
+      );
 
+      if (response.status === 200) {
+        const data = response.data;
+        console.log("Fetched profile data:", data);
+        setProfileData(data);
+
+        // Ensure all fields have default empty string values
+        setInputValues({
+          firstName: data.firstName || "",
+          lastName: data.lastName || "",
+          pronoun: data.pronoun || "",
+          country: data.country || "",
+          city: data.city || "",
+          state: data.state || "",
+          zipCode: data.zipCode || "",
+          street: data.street || "",
+          number: data.number || "",
+          phoneNumber: data.phoneNumber || "",
+        });
+
+        setSelectedPronoun(data.pronoun || "");
+      }
+    } catch (error) {
+      console.error("Error fetching profile data:", error.message);
+    }
+  };
   // Check login status on component mount
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get(`${API_URL}/`, {
+        const response = await axios.get("http://localhost:3002", {
           withCredentials: true,
         });
         const { valid, email } = response.data;
+
         setIsLoggedIn(valid);
         setEmail(email || "");
         fetchProfileData(email || "");
@@ -101,7 +100,7 @@ export default function DashboardProfile() {
     };
 
     checkLoginStatus();
-  }, [API_URL, fetchProfileData]);
+  }, []);
 
   // Effect to navigate to login page if user is not logged in
   useEffect(() => {
@@ -110,7 +109,6 @@ export default function DashboardProfile() {
     }
   }, [isLoggedIn, navigate]);
 
-  // Function to handle pronoun selection
   const handlePronounSelect = (pronoun) => {
     setPronoun(pronoun);
     setSelectedPronoun(pronoun);
@@ -134,10 +132,13 @@ export default function DashboardProfile() {
     console.log("Saving userData:", userData);
 
     try {
-      const response = await axios.post(`${API_URL}/save-data-profile`, {
-        email: email,
-        userData: userData,
-      });
+      const response = await axios.post(
+        "http://localhost:3002/save-data-profile",
+        {
+          email: email,
+          userData: userData,
+        }
+      );
 
       if (response.status === 200) {
         console.log("Saved successfully:", response.data);
@@ -188,11 +189,14 @@ export default function DashboardProfile() {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/change-password`, {
-        email,
-        currentPassword,
-        newPassword,
-      });
+      const response = await axios.post(
+        "http://localhost:3002/change-password",
+        {
+          email,
+          currentPassword,
+          newPassword,
+        }
+      );
 
       if (response.status === 200) {
         setAlert({ type: "success", message: "Password changed successfully" });
