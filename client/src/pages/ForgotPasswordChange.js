@@ -25,7 +25,7 @@ export default function ResetPassword() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await fetch("http://localhost:3002/", {
+        const response = await fetch(`${API_URL}/`, {
           method: "GET",
           credentials: "include",
         });
@@ -105,7 +105,7 @@ export default function ResetPassword() {
     }
 
     try {
-      const response = await axios.post(`${API_URL}reset-password`, {
+      const response = await axios.post(`${API_URL}/reset-password`, {
         password,
         token: resetToken,
       });

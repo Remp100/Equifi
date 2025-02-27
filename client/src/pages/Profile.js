@@ -13,6 +13,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function DashboardProfile() {
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3002";
+
   const [isLoggedIn, setIsLoggedIn] = useState();
   const [email, setEmail] = useState("");
   const [profileData, setProfileData] = useState({
@@ -52,10 +54,9 @@ export default function DashboardProfile() {
   // Function to fetch profile data for the given email
   const fetchProfileData = async (email) => {
     try {
-      const response = await axios.post(
-        "http://localhost:3002/get-profile-data",
-        { email }
-      );
+      const response = await axios.post(`${API_URL}/get-profile-data/`, {
+        email,
+      });
 
       if (response.status === 200) {
         const data = response.data;
@@ -86,7 +87,7 @@ export default function DashboardProfile() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await axios.get("http://localhost:3002", {
+        const response = await axios.get(`${API_URL}/`, {
           withCredentials: true,
         });
         const { valid, email } = response.data;
@@ -132,13 +133,10 @@ export default function DashboardProfile() {
     console.log("Saving userData:", userData);
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/save-data-profile",
-        {
-          email: email,
-          userData: userData,
-        }
-      );
+      const response = await axios.post(`${API_URL}/save-data-profile`, {
+        email: email,
+        userData: userData,
+      });
 
       if (response.status === 200) {
         console.log("Saved successfully:", response.data);
@@ -189,14 +187,11 @@ export default function DashboardProfile() {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:3002/change-password",
-        {
-          email,
-          currentPassword,
-          newPassword,
-        }
-      );
+      const response = await axios.post(`${API_URL}/change-password`, {
+        email,
+        currentPassword,
+        newPassword,
+      });
 
       if (response.status === 200) {
         setAlert({ type: "success", message: "Password changed successfully" });

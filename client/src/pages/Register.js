@@ -179,6 +179,7 @@ export default function Register() {
         type: "warning",
         message: "Invalid Country.",
       });
+      setIsSubmitting(false);
       return;
     }
     if (!city || !/^[\p{L}\s'-]+$/u.test(city)) {
@@ -186,6 +187,7 @@ export default function Register() {
         type: "warning",
         message: "Invalid City.",
       });
+      setIsSubmitting(false);
       return;
     }
     if (!state || !/^[\p{L}\s'-]+$/u.test(state)) {
@@ -193,6 +195,7 @@ export default function Register() {
         type: "warning",
         message: "Invalid State.",
       });
+      setIsSubmitting(false);
       return;
     }
     if (!zipCode || !/^\d{4,10}$/.test(zipCode)) {
@@ -200,10 +203,12 @@ export default function Register() {
         type: "warning",
         message: "Zip/Postal Code must contain 4 to 10 digits.",
       });
+      setIsSubmitting(false);
       return;
     }
     if (!street) {
       setAlert({ type: "warning", message: "Please enter a street name." });
+      setIsSubmitting(false);
       return;
     }
     if (!number || !/^\d+$/.test(number)) {
@@ -211,10 +216,12 @@ export default function Register() {
         type: "warning",
         message: "Street Number must be a valid number.",
       });
+      setIsSubmitting(false);
       return;
     }
     if (!CIPhoto) {
       setAlert({ type: "warning", message: "Please upload a CI photo." });
+      setIsSubmitting(false);
       return;
     }
 
@@ -234,7 +241,7 @@ export default function Register() {
     formData.append("CIPhoto", CIPhoto);
 
     axios
-      .post(`${API_URL}//register`, formData, {
+      .post(`${API_URL}/register`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
       .then((response) => {
@@ -245,6 +252,7 @@ export default function Register() {
           setTimeout(() => navigate("/login"), 4000);
         } else {
           setAlert({ type: "error", message: "Email is already registered." });
+          setIsSubmitting(false);
         }
       })
       .catch(() => {
@@ -252,6 +260,7 @@ export default function Register() {
           type: "error",
           message: "Registration failed. Please try again.",
         });
+        setIsSubmitting(false);
       });
   };
 

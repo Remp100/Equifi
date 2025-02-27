@@ -566,7 +566,7 @@ export default function DashboardPortfolios() {
   // Function to handle delete button click
   const handleDeleteButton = async (index) => {
     try {
-      await axios.post("http://localhost:3002/delete-portfolio", {
+      await axios.post(`${API_URL}/delete-portfolio`, {
         email: email,
         portfolioIndex: index,
       });
@@ -585,7 +585,7 @@ export default function DashboardPortfolios() {
   // Function to handle user logout
   const handleLogout = async () => {
     try {
-      await axios.get("http://localhost:3002/logout", {
+      await axios.get(`${API_URL}/logout`, {
         withCredentials: true,
       });
       localStorage.removeItem("isLoggedIn");
