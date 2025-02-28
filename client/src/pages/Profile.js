@@ -166,23 +166,59 @@ export default function DashboardProfile() {
     if (!currentPassword.trim()) {
       setAlert({
         type: "warning",
-        message: "Please enter your current password",
+        message: "Please enter your current password.",
       });
       return;
     }
+
     if (!newPassword.trim()) {
-      setAlert({ type: "warning", message: "Please enter a new password" });
+      setAlert({ type: "warning", message: "Please enter a new password." });
       return;
     }
-    if (newPassword.length < 4) {
+
+    if (newPassword.length < 12) {
       setAlert({
         type: "warning",
-        message: "Password must be at least 4 characters",
+        message: "Password must be at least 12 characters long.",
       });
       return;
     }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setAlert({
+        type: "warning",
+        message: "Password must contain at least one uppercase letter.",
+      });
+      return;
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      setAlert({
+        type: "warning",
+        message: "Password must contain at least one lowercase letter.",
+      });
+      return;
+    }
+
+    if (!/\d/.test(newPassword)) {
+      setAlert({
+        type: "warning",
+        message: "Password must contain at least one number.",
+      });
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      setAlert({
+        type: "warning",
+        message:
+          "Password must contain at least one special character (!@#$%^&*).",
+      });
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      setAlert({ type: "warning", message: "Passwords do not match" });
+      setAlert({ type: "warning", message: "Passwords do not match." });
       return;
     }
 
@@ -206,12 +242,11 @@ export default function DashboardProfile() {
     } catch (error) {
       console.error("Error changing password:", error.message);
 
-      // Check for specific error response
       if (error.response) {
         if (error.response.status === 401) {
           setAlert({
             type: "warning",
-            message: "Incorrect current password",
+            message: "Incorrect current password.",
           });
         } else {
           setAlert({

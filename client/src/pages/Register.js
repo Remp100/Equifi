@@ -129,7 +129,10 @@ export default function Register() {
         });
         return;
       }
-      if (email.trim() === "" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (
+        email.trim() === "" ||
+        !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+      ) {
         setAlert({ type: "warning", message: "Please enter a valid email." });
         return;
       }
@@ -137,10 +140,51 @@ export default function Register() {
         setAlert({ type: "warning", message: "Emails do not match." });
         return;
       }
-      if (password.trim() === "" || password.length < 4) {
+      if (password.trim() === "") {
         setAlert({
           type: "warning",
-          message: "Password must be at least 4 characters long.",
+          message: "Password cannot be empty.",
+        });
+        return;
+      }
+
+      if (password.length < 12) {
+        setAlert({
+          type: "warning",
+          message: "Password must be at least 12 characters long.",
+        });
+        return;
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        setAlert({
+          type: "warning",
+          message: "Password must contain at least one uppercase letter.",
+        });
+        return;
+      }
+
+      if (!/[a-z]/.test(password)) {
+        setAlert({
+          type: "warning",
+          message: "Password must contain at least one lowercase letter.",
+        });
+        return;
+      }
+
+      if (!/\d/.test(password)) {
+        setAlert({
+          type: "warning",
+          message: "Password must contain at least one number.",
+        });
+        return;
+      }
+
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        setAlert({
+          type: "warning",
+          message:
+            "Password must contain at least one special character (!@#$%^&*).",
         });
         return;
       }
