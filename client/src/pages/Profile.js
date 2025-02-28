@@ -211,8 +211,7 @@ export default function DashboardProfile() {
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
       setAlert({
         type: "warning",
-        message:
-          "Password must contain at least one special character (!@#$%^&*).",
+        message: "Password must contain at least one special character",
       });
       return;
     }

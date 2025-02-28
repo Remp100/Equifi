@@ -183,8 +183,7 @@ export default function Register() {
       if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
         setAlert({
           type: "warning",
-          message:
-            "Password must contain at least one special character (!@#$%^&*).",
+          message: "Password must contain at least one special character",
         });
         return;
       }
