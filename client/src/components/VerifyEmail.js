@@ -14,7 +14,7 @@ const EmailVerify = () => {
       // Redirect to your invalid page (assuming your 404 route is '/404')
       navigate("/404");
     });
-  }, [token, navigate]);
+  }, [token, navigate, API_URL]);
 
   return (
     <div className="login-page">

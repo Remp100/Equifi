@@ -315,13 +315,17 @@ body {
   position: relative;
 }
 
+.suggestion-dropdown-watchlist {
+  margin-top: 2px;
+}
+
 .suggestion-dropdown-watchlist ul {
   position: absolute;
   background: #fff;
   list-style-type: none;
   padding: 0;
   margin: 0;
-  width: 92%;
+  width: 91%;
   border: 1px solid #ddd;
   border-radius: 4px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);

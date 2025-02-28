@@ -66,6 +66,8 @@ export default function DashboardWatchlist() {
   const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
   const [alertFadeOut, setAlertFadeOut] = useState(false);
   const [apiError, setApiError] = useState(false);
+  const latestQueryRef = useRef("");
+  const controllerRef = useRef(null);
 
   // Effect to check login status when component mounts
   useEffect(() => {
@@ -422,74 +424,90 @@ export default function DashboardWatchlist() {
       return;
     }
 
-    fetchSuggestions(input);
+    fetchSuggestions(input, setSearchState);
   };
 
   // Function to fetch asset suggestions based on user input
-  const fetchSuggestions = (input) => {
-    fetch(
-      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`
-    )
-      .then((response) => {
+  const fetchSuggestions = async (input, updateSearchState) => {
+    if (!updateSearchState || typeof updateSearchState !== "function") {
+      console.error("❌ Error: updateSearchState is not a function.");
+      return;
+    }
+
+    // ✅ Store the latest query (persists across renders)
+    latestQueryRef.current = input;
+
+    // ✅ Cancel previous request if it exists
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+
+    // ✅ Create a new controller for the new request
+    controllerRef.current = new AbortController();
+    const { signal } = controllerRef.current;
+
+    try {
+      const response = await fetch(
+        `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`,
+        { signal }
+      );
+
+      if (!response.ok) {
         if (response.status === 429) {
-          setApiError(true);
-          throw new Error("API limit reached (429)");
+          setApiError(true); // API rate limit alert
         }
-        return response.json();
-      })
-      .then((data) => {
-        if (!data) {
-          console.error("Error: Data is null");
-          setSearchState((prevState) => ({
-            ...prevState,
-            suggestions: [],
-          }));
-          return;
-        }
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
 
-        const profilePromises = data.map((item) =>
-          fetch(
-            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`
-          )
-            .then((response) => response.json())
-            .then((profileData) => ({
-              ...item,
-              profile: profileData[0],
-            }))
-        );
+      const data = await response.json();
+      if (!data) return;
 
-        Promise.all(profilePromises)
-          .then((profiles) => {
-            const filteredSuggestions = profiles
-              .filter(
-                (profile) =>
-                  profile.profile && profile.profile.currency === "USD"
-              )
-              .map((profile) => ({
-                name: profile.name,
-                symbol: profile.symbol,
-              }));
+      // Fetch company profiles in parallel
+      const profilePromises = data.map((item) =>
+        fetch(
+          `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`,
+          { signal }
+        )
+          .then((res) => res.json())
+          .then((profileData) => ({
+            ...item,
+            profile: profileData[0] || null,
+          }))
+      );
 
-            setSearchState((prevState) => ({
-              ...prevState,
-              suggestions: filteredSuggestions,
-            }));
-          })
-          .catch((error) => {
-            console.error("Error fetching profiles:", error);
-            setSearchState((prevState) => ({
-              ...prevState,
-              suggestions: [],
-            }));
-          });
-      })
-      .catch((error) => {
-        console.error("Error fetching suggestions:", error);
-        setSearchState((prevState) => ({
+      const profiles = await Promise.all(profilePromises);
+
+      // Filter only USD-denominated stocks
+      const filteredSuggestions = profiles
+        .filter(
+          (profile) => profile.profile && profile.profile.currency === "USD"
+        )
+        .map((profile) => ({
+          name: profile.name,
+          symbol: profile.symbol,
+        }));
+
+      // 🛑 Ensure we only update state if this is still the latest query
+      if (input !== latestQueryRef.current) {
+        console.log(`🚫 Ignoring outdated result for "${input}"`);
+        return;
+      }
+
+      updateSearchState((prevState) => ({
+        ...prevState,
+        suggestions: filteredSuggestions,
+      }));
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("🚫 Previous request aborted due to new input.");
+      } else {
+        console.error("❌ Error fetching suggestions:", error);
+        updateSearchState((prevState) => ({
           ...prevState,
           suggestions: [],
         }));
-      });
+      }
+    }
   };
 
   // Function to handle input focus for asset search

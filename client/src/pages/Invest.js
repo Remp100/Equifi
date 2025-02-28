@@ -141,7 +141,7 @@ export default function DashboardInvest() {
     D: false,
   });
   const [shouldRecalculate, setShouldRecalculate] = useState(false);
-  const [suggestionCache, setSuggestionCache] = useState({});
+  const suggestionCache = useRef({});
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [open, setOpen] = useState(false);
@@ -236,27 +236,53 @@ export default function DashboardInvest() {
   };
 
   // Function to fetch suggestions from the API and update search state
-  const fetchSuggestions = (input, setSearchState) => {
-    if (suggestionCache[input]) {
-      setSearchState((prevState) => ({
-        ...prevState,
-        suggestions: suggestionCache[input],
-      }));
-      return;
-    }
+  const fetchSuggestions = (() => {
+    let controller = null; // Stores the active AbortController
+    let latestQuery = ""; // Track the latest query
 
-    fetch(
-      `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`
-    )
-      .then((response) => {
-        if (response.status === 429) {
-          setApiError(true); // API expired alert
+    return async (input, setSearchState) => {
+      if (!input) {
+        setSearchState((prevState) => ({
+          ...prevState,
+          suggestions: [],
+        }));
+        return;
+      }
+
+      latestQuery = input; // Store the latest query
+
+      // Cancel previous request if it exists
+      if (controller) {
+        controller.abort();
+      }
+
+      controller = new AbortController();
+      const { signal } = controller;
+
+      // Check if the input is already cached
+      if (suggestionCache.current[input]) {
+        setSearchState((prevState) => ({
+          ...prevState,
+          suggestions: suggestionCache.current[input],
+        }));
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5&apikey=${financeApiKey}`,
+          { signal }
+        );
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            setApiError(true); // API rate limit alert
+          }
+          throw new Error(`HTTP error! Status: ${response.status}`);
         }
-        return response.json();
-      })
-      .then((data) => {
-        if (!data) {
-          console.error("Error: Data is null");
+
+        const data = await response.json();
+        if (!data || data.length === 0) {
           setSearchState((prevState) => ({
             ...prevState,
             suggestions: [],
@@ -264,55 +290,58 @@ export default function DashboardInvest() {
           return;
         }
 
+        // Fetch company profiles in parallel
         const profilePromises = data.map((item) =>
           fetch(
-            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`
+            `https://financialmodelingprep.com/api/v3/profile/${item.symbol}?apikey=${financeApiKey}`,
+            { signal }
           )
-            .then((response) => response.json())
+            .then((res) => res.json())
             .then((profileData) => ({
               ...item,
-              profile: profileData[0],
+              profile: profileData[0] || null,
             }))
         );
 
-        Promise.all(profilePromises)
-          .then((profiles) => {
-            const filteredSuggestions = profiles
-              .filter(
-                (profile) =>
-                  profile.profile && profile.profile.currency === "USD"
-              )
-              .map((profile) => ({
-                name: profile.name,
-                symbol: profile.symbol,
-              }));
+        const profiles = await Promise.all(profilePromises);
 
-            setSuggestionCache((prevCache) => ({
-              ...prevCache,
-              [input]: filteredSuggestions,
-            }));
+        // Filter suggestions for USD-denominated stocks
+        const filteredSuggestions = profiles
+          .filter(
+            (profile) => profile.profile && profile.profile.currency === "USD"
+          )
+          .map((profile) => ({
+            name: profile.name,
+            symbol: profile.symbol,
+          }));
 
-            setSearchState((prevState) => ({
-              ...prevState,
-              suggestions: filteredSuggestions,
-            }));
-          })
-          .catch((error) => {
-            console.error("Error fetching profiles:", error);
-            setSearchState((prevState) => ({
-              ...prevState,
-              suggestions: [],
-            }));
-          });
-      })
-      .catch((error) => {
-        console.error("Error fetching suggestions:", error);
+        // 🛑 Ensure the response matches the latest query before updating state
+        if (input !== latestQuery) {
+          console.log(`🚫 Skipping outdated results for "${input}"`);
+          return;
+        }
+
+        // ✅ Store in cache to prevent redundant API calls
+        suggestionCache.current[input] = filteredSuggestions;
+
+        // ✅ Update search state with fresh suggestions
         setSearchState((prevState) => ({
           ...prevState,
-          suggestions: [],
+          suggestions: filteredSuggestions,
         }));
-      });
-  };
+      } catch (error) {
+        if (error.name === "AbortError") {
+          console.log("🚫 Previous request aborted due to new input.");
+        } else {
+          console.error("❌ Error fetching suggestions:", error);
+          setSearchState((prevState) => ({
+            ...prevState,
+            suggestions: [],
+          }));
+        }
+      }
+    };
+  })();
 
   // Handle function for input change on asset A
   const handleInputChangeA = (e) => {
@@ -488,10 +517,10 @@ export default function DashboardInvest() {
   // Function to handle input focus for asset A
   const handleInputFocusA = () => {
     if (searchStateA.companyName.trim() !== "") {
-      if (suggestionCache[searchStateA.companyName.trim()]) {
+      if (suggestionCache.current[searchStateA.companyName.trim()]) {
         setSearchStateA((prevState) => ({
           ...prevState,
-          suggestions: suggestionCache[searchStateA.companyName.trim()],
+          suggestions: suggestionCache.current[searchStateA.companyName.trim()],
         }));
       } else {
         fetchSuggestions(searchStateA.companyName, setSearchStateA);
@@ -502,10 +531,10 @@ export default function DashboardInvest() {
   // Function to handle input focus for asset B
   const handleInputFocusB = () => {
     if (searchStateB.companyName.trim() !== "") {
-      if (suggestionCache[searchStateB.companyName.trim()]) {
+      if (suggestionCache.current[searchStateB.companyName.trim()]) {
         setSearchStateB((prevState) => ({
           ...prevState,
-          suggestions: suggestionCache[searchStateB.companyName.trim()],
+          suggestions: suggestionCache.current[searchStateB.companyName.trim()],
         }));
       } else {
         fetchSuggestions(searchStateB.companyName, setSearchStateB);
@@ -516,10 +545,10 @@ export default function DashboardInvest() {
   // Function to handle input focus for asset C
   const handleInputFocusC = () => {
     if (searchStateC.companyName.trim() !== "") {
-      if (suggestionCache[searchStateC.companyName.trim()]) {
+      if (suggestionCache.current[searchStateC.companyName.trim()]) {
         setSearchStateC((prevState) => ({
           ...prevState,
-          suggestions: suggestionCache[searchStateC.companyName.trim()],
+          suggestions: suggestionCache.current[searchStateC.companyName.trim()],
         }));
       } else {
         fetchSuggestions(searchStateC.companyName, setSearchStateC);
@@ -530,10 +559,10 @@ export default function DashboardInvest() {
   // Function to handle input focus for asset D
   const handleInputFocusD = () => {
     if (searchStateD.companyName.trim() !== "") {
-      if (suggestionCache[searchStateD.companyName.trim()]) {
+      if (suggestionCache.current[searchStateD.companyName.trim()]) {
         setSearchStateD((prevState) => ({
           ...prevState,
-          suggestions: suggestionCache[searchStateD.companyName.trim()],
+          suggestions: suggestionCache.current[searchStateD.companyName.trim()],
         }));
       } else {
         fetchSuggestions(searchStateD.companyName, setSearchStateD);
