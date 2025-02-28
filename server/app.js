@@ -144,14 +144,42 @@ app.post("/register", upload.single("CIPhoto"), async (req, res) => {
   const setCIPhoto = req.file.path;
 
   try {
-    // Check if email already exists (also lowercase)
+    // **🔍 Validate Password Strength**
+    if (sentPassword.length < 12) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 12 characters long." });
+    }
+    if (!/[A-Z]/.test(sentPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one uppercase letter.",
+      });
+    }
+    if (!/[a-z]/.test(sentPassword)) {
+      return res.status(400).json({
+        message: "Password must contain at least one lowercase letter.",
+      });
+    }
+    if (!/\d/.test(sentPassword)) {
+      return res
+        .status(400)
+        .json({ message: "Password must contain at least one number." });
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(sentPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must contain at least one special character (!@#$%^&*).",
+      });
+    }
+
+    // **Check if email already exists (also lowercase)**
     const existingUser = await client
       .db("portfolio_login_db")
       .collection("users")
       .findOne({ email: sentEmail });
 
     if (existingUser) {
-      return res.send({ message: "Email is already registered" });
+      return res.status(400).json({ message: "Email is already registered" });
     }
 
     // Generate verification token
@@ -160,7 +188,7 @@ app.post("/register", upload.single("CIPhoto"), async (req, res) => {
     });
     sendVerificationEmail(sentEmail, verificationToken);
 
-    // Hash the password
+    // **Hash the password**
     const hash = await bcrypt.hash(sentPassword, saltRounds);
     const newUser = {
       email: sentEmail, // Store email in lowercase
@@ -1034,6 +1062,49 @@ app.post("/change-password", async (req, res) => {
       return res
         .status(401)
         .json({ success: false, message: "Incorrect current password." });
+    }
+
+    // **🔍 Validate New Password Strength**
+    if (newPassword.length < 12) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must be at least 12 characters long.",
+        });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must contain at least one uppercase letter.",
+        });
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must contain at least one lowercase letter.",
+        });
+    }
+    if (!/\d/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Password must contain at least one number.",
+        });
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Password must contain at least one special character (!@#$%^&*).",
+        });
     }
 
     // Hash the new password
