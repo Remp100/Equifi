@@ -1,0 +1,1203 @@
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import axios from "axios";
+import "../Dashboard.css";
+import { Link, useNavigate } from "react-router-dom";
+import Chart from "chart.js/auto";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import Toggle from "react-toggle";
+import "react-toggle/style.css";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faHome,
+  faChartLine,
+  faEye,
+  faFolder,
+  faUser,
+  faSignOutAlt,
+  faCalendarAlt,
+  faSearch,
+  // faUserCog,
+  faExclamation,
+  faCheck,
+  faExclamationTriangle,
+  faTimes,
+} from "@fortawesome/free-solid-svg-icons";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import Slider from "react-slick";
+
+export default function DashboardWatchlist() {
+  const financeApiKeys = useMemo(
+    () =>
+      (process.env.REACT_APP_FINANCE_API_KEYS || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
+    []
+  );
+  // keep track of which key is “current”
+  const keyIndexRef = useRef(0);
+  const deadKeysRef = useRef(new Set());
+
+  // always return the same key until it fails, then skip it
+  const getCurrentKey = useCallback(() => {
+    const keys = financeApiKeys;
+    const n = keys.length;
+
+    // if we’ve marked all as dead, reset
+    if (deadKeysRef.current.size === n) {
+      deadKeysRef.current.clear();
+    }
+
+    // find the next non-dead key
+    for (let i = 0; i < n; i++) {
+      const idx = keyIndexRef.current % n;
+      if (!deadKeysRef.current.has(keys[idx])) {
+        return keys[idx];
+      }
+      keyIndexRef.current++;
+    }
+
+    // fallback
+    return keys[0];
+  }, [financeApiKeys]);
+
+  // fetch helper: keeps using the same key until it 429s, then marks dead & moves on
+  const fetchWithFailover = useCallback(
+    async (baseUrl, opts = {}) => {
+      const tryFetch = async (apiKey) => {
+        const url = baseUrl.includes("apikey=")
+          ? baseUrl.replace(/apikey=[^&]*/, `apikey=${apiKey}`)
+          : `${baseUrl}${baseUrl.includes("?") ? "&" : "?"}apikey=${apiKey}`;
+
+        console.log(`[FinanceAPI] → ${url}`);
+        const res = await fetch(url, opts);
+        if (res.status === 429) {
+          console.warn(`[FinanceAPI] key expired: ${apiKey}`);
+          deadKeysRef.current.add(apiKey);
+          keyIndexRef.current++;
+          return null;
+        }
+        return res;
+      };
+
+      // try up to N keys
+      for (let i = 0; i < financeApiKeys.length; i++) {
+        const apiKey = getCurrentKey();
+        const res = await tryFetch(apiKey);
+        if (res) return res;
+      }
+
+      throw new Error("All API keys are exhausted");
+    },
+    [financeApiKeys, getCurrentKey]
+  );
+
+  // State variables
+  const [isLoggedIn, setIsLoggedIn] = useState();
+  const [email, setEmail] = useState("");
+  const [data, setData] = useState(null);
+  const navigate = useNavigate();
+  const [assetSymbol, setAssetSymbol] = useState("");
+  const [searchState, setSearchState] = useState({
+    companyName: "",
+    hasSearched: false,
+    suggestions: [],
+  });
+  const [searchResult, setSearchResult] = useState(null);
+  const searchBarRef = useRef(null);
+  const [showInput, setShowInput] = useState(true);
+  const [savedAssets, setSavedAssets] = useState([]);
+  const [displayType, setDisplayType] = useState(
+    localStorage.getItem("displayType") || "returns"
+  );
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [interval, setInterval] = useState("Interval");
+  const chartRef = useRef(null);
+  const chartInstanceRef = useRef(null);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [open, setOpen] = useState(false);
+  const [warning, setWarning] = useState("");
+  const [isAlertVisible, setIsAlertVisible] = useState(false);
+  const [isSuccessAlertVisible, setIsSuccessAlertVisible] = useState(false);
+  const [alertFadeOut, setAlertFadeOut] = useState(false);
+  const [apiError, setApiError] = useState(false);
+  const latestQueryRef = useRef("");
+  const controllerRef = useRef(null);
+
+  // Effect to check login status when component mounts
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await axios.get("http://localhost:3002", {
+          withCredentials: true,
+        });
+        const { valid, email, firstName, lastName } = response.data;
+        setIsLoggedIn(valid);
+        setEmail(email || "");
+        setFirstName(firstName || "");
+        setLastName(lastName || "");
+      } catch (error) {
+        console.error("Error checking login status:", error);
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
+
+  // Effect to navigate to login page if user is not logged in
+  useEffect(() => {
+    if (isLoggedIn === false) {
+      navigate("/login");
+    }
+  }, [isLoggedIn, navigate]);
+
+  // Function to handle user logout
+  const handleLogout = async () => {
+    try {
+      await axios.get("http://localhost:3002/logout", {
+        withCredentials: true,
+      });
+      localStorage.removeItem("isLoggedIn");
+      setIsLoggedIn(false);
+      sessionStorage.clear();
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
+
+  // Function to fetch and update chart data based on selected asset and date range
+  const updateChartData = useCallback(
+    (symbol) => {
+      if (!symbol || !startDate || !endDate || interval === "Interval") {
+        return;
+      }
+
+      const fetchInterval = interval === "Daily" ? "4hour" : interval;
+
+      fetchWithFailover(
+        `https://financialmodelingprep.com/api/v3/historical-chart/${fetchInterval}/${symbol}`
+      )
+        .then((response) => {
+          if (response.status === 429) {
+            setApiError(true); // API expired alert
+            throw new Error("API limit reached (429)");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          const filteredData = data.filter((item) => {
+            const date = new Date(item.date);
+            return date >= startDate && date <= endDate;
+          });
+          setData(filteredData);
+          if (filteredData.length === 0) {
+            setWarning("Asset has no data");
+            setIsAlertVisible(true);
+            setAlertFadeOut(false);
+          } else {
+            setWarning("");
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          setWarning("An error occurred while fetching data.");
+          setIsAlertVisible(true);
+          setAlertFadeOut(false);
+        });
+    },
+    [interval, startDate, endDate, fetchWithFailover]
+  );
+
+  // Effect to search for the company and get asset symbol
+  useEffect(() => {
+    if (searchState.hasSearched && searchState.companyName) {
+      fetchWithFailover("https://financialmodelingprep.com/api/v3/stock/list")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          if (!data) {
+            console.error("Error: Data is null");
+            return;
+          }
+
+          const foundItems = data.filter((item) => {
+            return (
+              item.name &&
+              item.name.toLowerCase() === searchState.companyName.toLowerCase()
+            );
+          });
+
+          setAssetSymbol(foundItems.length > 0 ? foundItems[0].symbol : "");
+          setSearchState({
+            ...searchState,
+            hasSearched: false,
+          });
+        })
+        .catch((error) => {
+          console.error("Error fetching data:", error);
+        });
+    }
+  }, [searchState, fetchWithFailover]);
+
+  // Effect to update chart data when asset symbol, dates or interval changes
+  useEffect(() => {
+    if (assetSymbol && startDate && endDate && interval) {
+      updateChartData(assetSymbol);
+    }
+  }, [assetSymbol, startDate, endDate, interval, updateChartData]);
+
+  // Function to draw the chart
+  const drawChart = useCallback(() => {
+    const ctx = chartRef.current.getContext("2d");
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+    const newChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data
+          ? data
+              .map((item) => new Date(item.date).toLocaleDateString())
+              .reverse()
+          : [],
+        datasets: [
+          {
+            label: displayType === "returns" ? "Returns" : "Close Value",
+            data: data
+              ? displayType === "returns"
+                ? calculateReturns(data.map((item) => item.close))
+                : data.map((item) => item.close)
+              : [],
+            borderColor: "rgba(255, 99, 132, 1)",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              font: {
+                size: 12,
+              },
+            },
+          },
+          x: {
+            display: true,
+            ticks: {
+              font: {
+                size: 12,
+              },
+            },
+            grid: {
+              display: false,
+            },
+          },
+        },
+      },
+    });
+    chartInstanceRef.current = newChartInstance;
+  }, [data, displayType]);
+
+  // Effect to initialize the chart with empty data on component mount
+  useEffect(() => {
+    const ctx = chartRef.current.getContext("2d");
+    const initialChartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: "No data",
+            data: [],
+            borderColor: "rgba(255, 99, 132, 1)",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: false,
+            ticks: {
+              font: {
+                size: 12,
+              },
+            },
+          },
+          x: {
+            display: true,
+            ticks: {
+              font: {
+                size: 12,
+              },
+            },
+            grid: {
+              display: false,
+            },
+          },
+        },
+      },
+    });
+    chartInstanceRef.current = initialChartInstance;
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+      }
+    };
+  }, []);
+
+  // Effect to redraw the chart when data or display type changes
+  useEffect(() => {
+    if (data) {
+      drawChart();
+    }
+  }, [data, displayType, drawChart]);
+
+  // Function to calculate returns for the asset
+  const calculateReturns = (data) => {
+    if (data.length < 2) return [];
+    const returns = data.slice(1).map((currentClose, index) => {
+      const previousClose = data[index];
+      return ((currentClose - previousClose) / previousClose) * 100;
+    });
+    return returns;
+  };
+
+  // Function to save the asset to the user's watchlist
+  const handleSaveAsset = () => {
+    if (
+      interval === "Interval" ||
+      !data ||
+      data.length === 0 ||
+      data[data.length - 1]?.close === undefined
+    ) {
+      setWarning("Asset has no data");
+      setIsAlertVisible(true);
+      setAlertFadeOut(false);
+      return;
+    }
+
+    const newAsset = {
+      assetSymbol: assetSymbol,
+      interval: interval,
+      startDate: startDate,
+      endDate: endDate,
+    };
+
+    const isDuplicate = savedAssets.some(
+      (asset) =>
+        asset.assetSymbol === newAsset.assetSymbol &&
+        asset.interval === newAsset.interval &&
+        new Date(asset.startDate).toISOString() ===
+          new Date(newAsset.startDate).toISOString() &&
+        new Date(asset.endDate).toISOString() ===
+          new Date(newAsset.endDate).toISOString()
+    );
+
+    if (isDuplicate) {
+      setWarning("This asset with the same parameters is already saved.");
+      setIsAlertVisible(true);
+      return;
+    }
+
+    axios
+      .post("http://localhost:3002/save-asset", {
+        email: email,
+        ...newAsset,
+      })
+      .then((response) => {
+        if (response.status === 200) {
+          // Update local state with the complete asset object
+          setSavedAssets((prevSavedAssets) => [...prevSavedAssets, newAsset]);
+          setIsSuccessAlertVisible(true);
+          setAlertFadeOut(false);
+
+          // Refresh the saved assets from the server to ensure consistency
+          fetchSavedAssets();
+        } else if (response.status === 400) {
+          setWarning("Asset is already saved.");
+          setIsAlertVisible(true);
+          setAlertFadeOut(false);
+        } else {
+          setWarning("Failed to save asset.");
+          setIsAlertVisible(true);
+          setAlertFadeOut(false);
+        }
+      })
+      .catch((error) => {
+        console.error("Error saving asset:", error);
+        setWarning("An error occurred while saving the asset.");
+        setIsAlertVisible(true);
+        setAlertFadeOut(false);
+      });
+  };
+
+  const fetchSavedAssets = useCallback(() => {
+    axios
+      .get(`http://localhost:3002/saved-assets/${email}`)
+      .then((response) => {
+        console.log("Saved assets response:", response.data);
+        if (response.status === 200 && response.data.savedAssets.length > 0) {
+          setSavedAssets(response.data.savedAssets);
+          setWarning("");
+          setIsAlertVisible(false);
+        } else {
+          setSavedAssets([]);
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching saved assets:", error);
+        setSavedAssets([]);
+        setWarning("");
+        setIsAlertVisible(false);
+      });
+  }, [email, setSavedAssets, setWarning, setIsAlertVisible]);
+
+  useEffect(() => {
+    fetchSavedAssets();
+  }, [fetchSavedAssets]);
+
+  // Function to handle input change for asset search
+  const handleInputChange = (e) => {
+    const input = e.target.value;
+    setSearchState((prevState) => ({
+      ...prevState,
+      companyName: input,
+    }));
+
+    if (input.trim() === "") {
+      setSearchState((prevState) => ({
+        ...prevState,
+        suggestions: [],
+      }));
+      return;
+    }
+
+    fetchSuggestions(input, setSearchState);
+  };
+
+  // Function to fetch asset suggestions based on user input
+  const fetchSuggestions = async (input, updateSearchState) => {
+    if (!updateSearchState || typeof updateSearchState !== "function") {
+      console.error("❌ Error: updateSearchState is not a function.");
+      return;
+    }
+
+    // ✅ Store the latest query (persists across renders)
+    latestQueryRef.current = input;
+
+    // ✅ Cancel previous request if it exists
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+    }
+
+    // ✅ Create a new controller for the new request
+    controllerRef.current = new AbortController();
+    const { signal } = controllerRef.current;
+
+    try {
+      const response = await fetchWithFailover(
+        `https://financialmodelingprep.com/api/v3/search?query=${input}&limit=5`,
+        { signal }
+      );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setApiError(true); // API rate limit alert
+        }
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (!data) return;
+
+      // Fetch company profiles in parallel
+      // Now reuse that same batchKey for all profile calls
+      const profilePromises = data.map((item) =>
+        fetchWithFailover(
+          `https://financialmodelingprep.com/api/v3/profile/${item.symbol}`,
+          { signal }
+        )
+          .then((res) => res.json())
+          .then((profileData) => ({
+            ...item,
+            profile: profileData[0] || null,
+          }))
+      );
+
+      const profiles = await Promise.all(profilePromises);
+
+      // Filter only USD-denominated stocks
+      const filteredSuggestions = profiles
+        .filter(
+          (profile) => profile.profile && profile.profile.currency === "USD"
+        )
+        .map((profile) => ({
+          name: profile.name,
+          symbol: profile.symbol,
+        }));
+
+      // 🛑 Ensure we only update state if this is still the latest query
+      if (input !== latestQueryRef.current) {
+        console.log(`🚫 Ignoring outdated result for "${input}"`);
+        return;
+      }
+
+      updateSearchState((prevState) => ({
+        ...prevState,
+        suggestions: filteredSuggestions,
+      }));
+    } catch (error) {
+      if (error.name === "AbortError") {
+        console.log("🚫 Previous request aborted due to new input.");
+      } else {
+        console.error("❌ Error fetching suggestions:", error);
+        updateSearchState((prevState) => ({
+          ...prevState,
+          suggestions: [],
+        }));
+      }
+    }
+  };
+
+  // Function to handle input focus for asset search
+  const handleInputFocus = () => {
+    if (searchState.companyName.trim() !== "") {
+      fetchSuggestions(searchState.companyName);
+    }
+  };
+
+  // Function to handle asset button click to update chart
+  const handleAssetButtonClick = (asset) => {
+    setAssetSymbol(asset.assetSymbol);
+    setStartDate(new Date(asset.startDate));
+    setEndDate(new Date(asset.endDate));
+    setInterval(asset.interval);
+  };
+
+  // Function to handle suggestion click from dropdown
+  const handleSuggestionClick = (name, symbol) => {
+    setSearchResult([{ name, symbol }]);
+    setSearchState({
+      ...searchState,
+      companyName: "",
+      suggestions: [],
+    });
+    setShowInput(false);
+    setAssetSymbol(symbol);
+  };
+
+  // Function to toggle display type between historical and returns
+  const handleToggleChange = () => {
+    const newDisplayType =
+      displayType === "historical" ? "returns" : "historical";
+    setDisplayType(newDisplayType);
+    localStorage.setItem("displayType", newDisplayType);
+  };
+
+  // Function to handle click outside of search bar to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        searchBarRef.current &&
+        !searchBarRef.current.contains(event.target)
+      ) {
+        setSearchState((prevState) => ({
+          ...prevState,
+          suggestions: [],
+        }));
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [searchBarRef]);
+
+  // Function to delete saved asset from watchlist
+  const handleDeleteAsset = (asset) => {
+    const startDate = asset.startDate ? new Date(asset.startDate) : null;
+    const endDate = asset.endDate ? new Date(asset.endDate) : null;
+
+    if (!startDate || isNaN(startDate) || !endDate || isNaN(endDate)) {
+      console.error("Invalid date value:", asset.startDate, asset.endDate);
+      setWarning("Invalid date value.");
+      setIsAlertVisible(true);
+      return;
+    }
+
+    axios
+      .post("http://localhost:3002/delete-saved-asset", {
+        email: email,
+        assetSymbol: asset.assetSymbol,
+        interval: asset.interval,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      })
+      .then((response) => {
+        if (response.status === 200) {
+          setSavedAssets((prevSavedAssets) =>
+            prevSavedAssets.filter(
+              (a) =>
+                a.assetSymbol !== asset.assetSymbol ||
+                a.interval !== asset.interval ||
+                new Date(a.startDate).toISOString() !==
+                  startDate.toISOString() ||
+                new Date(a.endDate).toISOString() !== endDate.toISOString()
+            )
+          );
+        } else {
+          setWarning("Failed to delete asset.");
+          setIsAlertVisible(true);
+          setAlertFadeOut(false);
+        }
+      })
+      .catch((error) => {
+        console.error("Error deleting asset:", error);
+        setWarning("An error occurred while deleting the asset.");
+        setIsAlertVisible(true);
+        setAlertFadeOut(false);
+      });
+  };
+
+  const menuRef = useRef(null);
+  useEffect(() => {
+    let handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+        console.log(
+          "Clicked outside:",
+          e.target,
+          menuRef.current.contains(e.target)
+        );
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [menuRef]);
+
+  const initials = `${firstName.charAt(0).toUpperCase()}${lastName
+    .charAt(0)
+    .toUpperCase()}`;
+
+  useEffect(() => {
+    console.log(savedAssets);
+  }, [savedAssets]);
+
+  const handleCloseWithFade = () => {
+    setAlertFadeOut(true);
+    setTimeout(() => {
+      setIsAlertVisible(false);
+      setIsSuccessAlertVisible(false);
+    }, 500);
+  };
+
+  // Automatically hide error alert after 5 seconds
+  useEffect(() => {
+    if (isAlertVisible) {
+      setAlertFadeOut(false); // Ensure fade-out is reset
+      const timer = setTimeout(() => {
+        setAlertFadeOut(true);
+        setTimeout(() => {
+          setIsAlertVisible(false);
+          setAlertFadeOut(false); // Reset for next use
+        }, 500);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAlertVisible]);
+
+  // Automatically hide success alert after 5 seconds
+  useEffect(() => {
+    if (isSuccessAlertVisible) {
+      setAlertFadeOut(false); // Reset fade-out
+      const timer = setTimeout(() => {
+        setAlertFadeOut(true);
+        setTimeout(() => {
+          setIsSuccessAlertVisible(false);
+          setAlertFadeOut(false); // Reset for next use
+        }, 500);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccessAlertVisible]);
+
+  const renderStatusMessage = () => {
+    if (isAlertVisible) {
+      return (
+        <div className={`alert error ${alertFadeOut ? "fade-out" : ""}`}>
+          <FontAwesomeIcon icon={faExclamation} className="mr-2" />
+          {warning}
+          <button className="alert close-btn" onClick={handleCloseWithFade}>
+            X
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderSuccessAlert = () => {
+    if (isSuccessAlertVisible) {
+      return (
+        <div className={`alert success ${alertFadeOut ? "fade-out" : ""}`}>
+          <FontAwesomeIcon icon={faCheck} className="mr-2" />
+          Portfolio saved successfully!
+          <button className="alert close-btn" onClick={handleCloseWithFade}>
+            X
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const renderApiError = () => {
+    if (apiError) {
+      return (
+        <div className="alert error">
+          <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2" />
+          API limit reached! Please wait or use a different API key.
+          <button
+            className="alert close-btn"
+            onClick={() => setApiError(false)}
+          >
+            X
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const sliderRef = useRef(null);
+
+  // Settings with arrows disabled - we'll add our own navigation
+  const settings = {
+    dots: true,
+    infinite: false,
+    speed: 500,
+    slidesToShow: 1,
+    slidesToScroll: 1,
+    adaptiveHeight: true,
+    centerMode: savedAssets.length > 1,
+    centerPadding: savedAssets.length > 1 ? "10px" : "0",
+    arrows: false,
+  };
+
+  // Custom navigation functions
+  const goToNext = () => {
+    if (sliderRef.current) {
+      sliderRef.current.slickNext();
+    }
+  };
+
+  const goToPrev = () => {
+    if (sliderRef.current) {
+      sliderRef.current.slickPrev();
+    }
+  };
+
+  return (
+    <div className="dashboard">
+      <div className="sidebar-watchlist">
+        <div className="app-title-container">
+          <div className="app-title">
+            <h3>EquiFi</h3>
+          </div>
+        </div>
+        <nav className="menu">
+          <Link to="/dashboard" className="menu-item">
+            <FontAwesomeIcon icon={faHome} className="menu-icon" /> Dashboard
+          </Link>
+          <Link to="/dashboard/invest" className="menu-item">
+            <FontAwesomeIcon icon={faChartLine} className="menu-icon" /> Invest
+          </Link>
+          <Link to="/dashboard/watchlist" className="menu-item active">
+            <FontAwesomeIcon icon={faEye} className="menu-icon" /> Watchlist
+          </Link>
+          <Link to="/dashboard/portfolios" className="menu-item">
+            <FontAwesomeIcon icon={faFolder} className="menu-icon" /> Portfolios
+          </Link>
+        </nav>
+      </div>
+      <div className="main-content">
+        <div className="alert-invest">{renderStatusMessage()}</div>
+        <div className="alert-invest">{renderSuccessAlert()}</div>
+        <div className="alert-invest">{renderApiError()}</div>
+        <div className="profile-dropdown-watchlist">
+          <div className="nav-menu" ref={menuRef}>
+            <div className="menu-trigger">
+              <button className="avatar-button" onClick={() => setOpen(!open)}>
+                <div className="avatar-wrapper">
+                  <div className="avatar-placeholder">{initials}</div>
+                </div>
+              </button>
+            </div>
+            <div className={`dropdown-menu ${open ? "active" : "inactive"}`}>
+              <div className="account-info">
+                <div className="account-details">
+                  <div className="full-name">
+                    {firstName} {lastName}
+                  </div>
+                </div>
+              </div>
+              <div className="dropdown-links">
+                <Link to="/dashboard/profile" className="dropdown-item">
+                  <FontAwesomeIcon icon={faUser} className="menu-icon" />
+                  Profile
+                </Link>
+                {/* <Link to="/dashboard/profile" className="dropdown-item">
+                  <FontAwesomeIcon icon={faUserCog} className="menu-icon" />
+                  Settings
+                </Link> */}
+                <div className="dropdown-item" onClick={handleLogout}>
+                  <FontAwesomeIcon icon={faSignOutAlt} className="menu-icon" />
+                  Log out
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="content-watchlist">
+          {/* Input Section */}
+          <div className="card-watchlist input-section">
+            <h2 className="text-center">Search Assets</h2>
+            <div className="input-row">
+              {showInput && (
+                <div className="search-bar-watchlist" ref={searchBarRef}>
+                  <input
+                    type="text"
+                    value={searchState.companyName}
+                    onChange={handleInputChange}
+                    onFocus={handleInputFocus}
+                    placeholder="Search for an asset"
+                  />
+                  <FontAwesomeIcon
+                    icon={faSearch}
+                    className="search-icon-watchlist"
+                  />
+                  {searchState.suggestions.length > 0 && (
+                    <div className="suggestion-dropdown-watchlist">
+                      <ul>
+                        {searchState.suggestions.map((item) => (
+                          <li
+                            key={item.symbol}
+                            onClick={() =>
+                              handleSuggestionClick(item.name, item.symbol)
+                            }
+                          >
+                            {item.name} ({item.symbol})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              {searchResult && searchResult.length > 0 && (
+                <div className="search-results-watchlist">
+                  <ul className="search-results-list">
+                    {searchResult.map((item) => (
+                      <li
+                        key={item.symbol}
+                        className="search-result-item-watchlist"
+                      >
+                        <span className="search-result-text">
+                          {item.name} ({item.symbol})
+                        </span>
+                        <button
+                          className="delete-button"
+                          onClick={() => {
+                            setShowInput(true);
+                            setSearchResult(null);
+                            setWarning("");
+                          }}
+                        >
+                          X
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="start-date-picker-wrapper-watchlist">
+                <DatePicker
+                  selected={startDate}
+                  onChange={(date) => setStartDate(date)}
+                  placeholderText="Select start date"
+                  maxDate={yesterday}
+                  onKeyDown={(e) => e.preventDefault()}
+                />
+                <FontAwesomeIcon
+                  icon={faCalendarAlt}
+                  className="calendar-icon-watchlist-start-date"
+                />
+              </div>
+            </div>
+            <div className="input-row">
+              <div className="interval-wrapper-watchlist">
+                <select
+                  value={interval}
+                  onChange={(e) => setInterval(e.target.value)}
+                  className="interval-select-watchlist"
+                >
+                  <option hidden>Interval</option>
+                  <option value="1m">1 Minute</option>
+                  <option value="5m">5 Minutes</option>
+                  <option value="15m">15 Minutes</option>
+                  <option value="30m">30 Minutes</option>
+                  <option value="1hour">1 Hour</option>
+                  <option value="4hour">4 Hour</option>
+                  <option value="Daily">Daily</option>
+                </select>
+              </div>
+              <div className="end-date-picker-wrapper-watchlist">
+                <DatePicker
+                  selected={endDate}
+                  onChange={(date) => setEndDate(date)}
+                  placeholderText="Select end date"
+                  maxDate={new Date()}
+                  className="date-picker-input"
+                  onKeyDown={(e) => e.preventDefault()}
+                />
+                <FontAwesomeIcon
+                  icon={faCalendarAlt}
+                  className="calendar-icon-watchlist-end-date"
+                />
+              </div>
+            </div>
+            <div className="save-asset-wrapper">
+              <button className="btn save-asset" onClick={handleSaveAsset}>
+                Save Asset
+              </button>
+            </div>
+            <div
+              className="carousel-container"
+              style={{
+                maxWidth: "300px",
+                margin: "0 auto",
+                padding: "20px",
+                position: "relative",
+              }}
+            >
+              <h2 className="text-center" style={{ marginBottom: "20px" }}>
+                Saved Assets
+              </h2>
+              {savedAssets.length > 1 && (
+                <button
+                  onClick={goToPrev}
+                  style={{
+                    position: "absolute",
+                    left: "0px",
+                    top: "60%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    background: "rgba(255, 255, 255, 0.7)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    cursor: "pointer",
+                    color: "black",
+                    outline: "none",
+                  }}
+                  aria-label="Previous Slide"
+                >
+                  &lt;
+                </button>
+              )}
+
+              {savedAssets.length > 0 ? (
+                <div style={{ margin: "0 30px" }}>
+                  <Slider ref={sliderRef} {...settings}>
+                    {savedAssets.map((asset, index) => (
+                      <div
+                        key={index}
+                        data-index={index}
+                        className="carousel-slide"
+                        style={{ padding: "10px" }}
+                      >
+                        <div
+                          className="asset-card"
+                          style={{
+                            border: "1px solid #ccc",
+                            borderRadius: "10px",
+                            padding: "15px",
+                            textAlign: "center",
+                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                            margin: "5px",
+                            position: "relative",
+                          }}
+                        >
+                          {/* View Icon */}
+                          <FontAwesomeIcon
+                            icon={faEye}
+                            className="asset-view-icon"
+                            onClick={() => handleAssetButtonClick(asset)}
+                            style={{
+                              position: "absolute",
+                              top: "8px",
+                              left: "8px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          />
+
+                          {/* Asset Information */}
+                          <div
+                            className="asset-info"
+                            style={{
+                              marginBottom: "10px",
+                              marginTop: "10px",
+                            }}
+                          >
+                            <strong style={{ fontSize: "18px" }}>
+                              {asset.assetSymbol}
+                            </strong>
+                            <div>Interval: {asset.interval || "N/A"}</div>
+                            <div>
+                              Start:{" "}
+                              {asset.startDate
+                                ? new Date(asset.startDate).toLocaleDateString(
+                                    "en-US"
+                                  )
+                                : "N/A"}
+                            </div>
+                            <div>
+                              End:{" "}
+                              {asset.endDate
+                                ? new Date(asset.endDate).toLocaleDateString(
+                                    "en-US"
+                                  )
+                                : "N/A"}
+                            </div>
+                          </div>
+
+                          {/* Delete Icon */}
+                          <div
+                            className="asset-buttons"
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              gap: "10px",
+                            }}
+                          >
+                            <FontAwesomeIcon
+                              icon={faTimes}
+                              className="asset-delete-icon"
+                              onClick={() => handleDeleteAsset(asset)}
+                              style={{
+                                position: "absolute",
+                                top: "7px",
+                                right: "10px",
+                                fontSize: "14px",
+                                cursor: "pointer",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </Slider>
+                </div>
+              ) : (
+                <p style={{ textAlign: "center", color: "#666" }}>
+                  No assets saved yet. Add some assets above!
+                </p>
+              )}
+
+              {/* Custom Next Button */}
+              {savedAssets.length > 1 && (
+                <button
+                  onClick={goToNext}
+                  style={{
+                    position: "absolute",
+                    right: "0px",
+                    top: "60%",
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    background: "rgba(255, 255, 255, 0.7)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: "30px",
+                    height: "30px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    cursor: "pointer",
+                    color: "black",
+                    outline: "none",
+                  }}
+                  aria-label="Next Slide"
+                >
+                  &gt;
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Chart Section */}
+          <div className="card-watchlist chart-container">
+            <h2 className="text-center">Performance Chart</h2>
+            <div className="toggle-section">
+              <label className="toggle-label">
+                <Toggle
+                  checked={displayType === "returns"}
+                  onChange={handleToggleChange}
+                  icons={false}
+                  className="custom-toggle"
+                />
+                <span
+                  className={`toggle-text-left ${
+                    displayType === "historical" ? "active" : ""
+                  }`}
+                >
+                  Historical
+                </span>
+                <span
+                  className={`toggle-text-right ${
+                    displayType === "returns" ? "active" : ""
+                  }`}
+                >
+                  Returns
+                </span>
+              </label>
+            </div>
+            <canvas className="canvas-watchlist" ref={chartRef}></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
